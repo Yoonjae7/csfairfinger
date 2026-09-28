@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f8f7f2" />
+    <meta name="description" content="An interactive hand-controlled camera experiment from the Computer Science Society." />
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+    <title>CSS Reality Lab — Bend the moment</title>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="CSS Reality Lab home">
+        <span class="logo-crop"><img src="/assets/css-logo.png" alt="" /></span>
+        <span class="brand-name">CSS REALITY LAB<small>UNIVERSITY OF NOTTINGHAM</small></span>
+      </a>
+      <div class="topbar-right"><span class="topbar-edition">AN INTERACTIVE EXPERIMENT <span>↗</span></span><span class="topbar-divider"></span><span>CLUBS &amp; SOCIETIES FAIR</span><b aria-hidden="true">✳</b></div>
+    </header>
+
+    <main id="top">
+      <nav class="journey" aria-label="Experience steps">
+        <span class="current"><b>01</b> STEP INTO THE FRAME</span><i>→</i>
+        <span><b>02</b> BEND THE LIGHT</span><i>→</i>
+        <span><b>03</b> KEEP YOUR MOMENT</span>
+      </nav>
+
+      <section class="hero" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">THE CSS CAMERA EXPERIMENT / NO. 001</p>
+          <h1 id="page-title">Reality,<br /><em>remixed.</em><span class="title-spark" aria-hidden="true">✳</span></h1>
+        </div>
+        <div class="hero-aside"><span class="hero-aside-line"></span><p>A little camera magic, made for the curious. Spread your hands, bend the light, and take home a moment that feels like you.</p><span class="hero-aside-foot">WE DON'T CODE, WE BUILD <span>↘</span></span></div>
+      </section>
+
+      <section class="workspace" aria-label="Interactive camera lab">
+        <div class="stage-column">
+          <div class="camera-window">
+            <div class="window-bar"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>css_reality_lab.exe</span><span class="window-bar-end">LIVE EXPERIMENT <span aria-hidden="true">✳</span></span></div>
+            <div class="stage" id="stage">
+              <canvas id="scene" width="1280" height="800" aria-label="Live mirrored camera with an interactive prism lens"></canvas>
+              <div class="stage-top" aria-hidden="true"><span class="stage-tag"><span class="live-dot"></span><span id="stage-live-label">CAMERA OFF</span></span><span class="stage-counter">CSS / 001</span></div>
+              <div class="stage-corners" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+              <div id="welcome" class="welcome">
+                <span class="welcome-kicker">✳ HELLO, HUMAN</span>
+                <h2>Your hands are<br />the controller.</h2>
+                <p>Spread your hands to open the portal. Your photo stays on this device.</p>
+                <div class="welcome-actions"><button id="open-camera" class="button mint" type="button">Open the camera <span>↗</span></button></div>
+              </div>
+              <div id="flash" class="flash" aria-hidden="true"></div>
+              <div class="stage-bottom" aria-hidden="true"><span>◌ &nbsp; SPREAD YOUR HANDS</span><span>NO. 001 / 001</span></div>
+            </div>
+            <div class="window-footer"><span id="camera-state"><span class="status-signal"></span> CAMERA OFF</span><span id="tracking-state">WAITING FOR CAMERA</span><span class="window-footer-mark" aria-hidden="true">✳</span></div>
+          </div>
+
+          <div class="under-stage"><div class="hint-icon" aria-hidden="true">✳</div><p id="stage-hint"><strong>How to play</strong> Open the camera and spread two hands to reveal the portal. Touch thumb to pinky for the next look; close both fists to change mode.</p></div>
+        </div>
+
+        <aside class="control-panel" aria-label="Experiment controls">
+          <div class="panel-head"><div><span class="panel-overline">YOUR WORKSPACE</span><h2>Control<br />the chaos<span>.</span></h2></div><span class="panel-star" aria-hidden="true">✳</span></div>
+          <div class="instruction"><span class="instruction-number">01 / THE GESTURE</span><div class="gesture-icons"><span class="gesture-glyph" aria-hidden="true">◇</span><span class="gesture-arrow" aria-hidden="true">⟷</span><span class="gesture-glyph" aria-hidden="true">◇</span></div><div class="gesture-list"><p><strong>Spread two hands</strong> to open the portal.</p><p><strong>Thumb + pinky</strong> to change the look.</p><p><strong>Close both fists</strong> to switch dimensions.</p></div></div>
+
+          <div class="control-section"><div class="control-label"><span>02 / PICK A DIMENSION</span><span class="tiny-asterisk">✳</span></div><div class="mode-options" role="group" aria-label="Portal dimension"><button class="mode-button" data-mode="2d" type="button"><span class="mode-icon">▱</span><span>2D portal<small>Quad or bowtie</small></span></button><button class="mode-button active" data-mode="3d" type="button" aria-pressed="true"><span class="mode-icon">⬡</span><span>3D mesh<small>Two filtered bands</small></span></button></div></div>
+
+          <div class="control-section filter-section"><div class="control-label"><span>03 / CHOOSE A LOOK</span><span id="filter-count">01 / 06</span></div><div class="filter-grid" role="group" aria-label="Camera filters"><button class="filter-button active" type="button" data-filter="prism" aria-pressed="true"><span class="filter-swatch prism-swatch"></span><span>Prism</span></button><button class="filter-button" type="button" data-filter="thermal"><span class="filter-swatch thermal-swatch"></span><span>Thermal</span></button><button class="filter-button" type="button" data-filter="pixel"><span class="filter-swatch pixel-swatch"></span><span>Pixel</span></button><button class="filter-button" type="button" data-filter="mono"><span class="filter-swatch mono-swatch"></span><span>Mono</span></button><button class="filter-button" type="button" data-filter="rgb"><span class="filter-swatch rgb-swatch"></span><span>RGB split</span></button><button class="filter-button" type="button" data-filter="dream"><span class="filter-swatch dream-swatch"></span><span>Dream</span></button></div></div>
+
+          <div class="control-section strength-section"><div class="control-label"><label for="strength">04 / TURN IT UP</label><output id="strength-value" for="strength">72%</output></div><input id="strength" type="range" min="20" max="100" value="72" aria-label="Effect strength" /><div class="range-labels"><span>SOFT</span><span>LOUD</span></div></div>
+
+          <div class="panel-actions"><button id="capture" class="button purple" type="button" disabled>Capture this moment <span>↓</span></button><button id="end-session" class="text-link" type="button" hidden>End session ↺</button></div>
+          <div class="panel-note"><span aria-hidden="true">♡</span><p>No account. No upload. Your camera and snapshots stay right here.</p></div>
+        </aside>
+      </section>
+
+      <section class="bottom-banner" aria-label="Computer Science Society"><span class="bottom-banner-kicker">COME PLAY WITH US</span><h2>Curious looks good on you<span>.</span></h2><p>Made by the Computer Science Society<br />for the Clubs &amp; Societies Fair.</p><span class="bottom-banner-star" aria-hidden="true">✳</span></section>
+    </main>
+    <footer><span>COMPUTER SCIENCE SOCIETY · UNIVERSITY OF NOTTINGHAM</span><span>WE DON'T CODE, WE BUILD ↗</span></footer>
+    <video id="camera" autoplay muted playsinline hidden></video>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
