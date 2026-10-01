@@ -85,3 +85,34 @@ test('closed fists cannot start fusion while the dimension gesture is held', () 
   for (let now = 0; now <= 6000; now += 50) controller.update(fists, mixed, now);
   assert.equal(controller.state.phase, 'idle');
 });
+
+
+test('overlapping hand dropouts retain both mixing effects and pause the hold', () => {
+  const controller = createElementFusion();
+  const before = hold(controller, mixed, 0, 2000);
+  const missing = controller.update([close()[0]], mixed, 2050);
+  assert.equal(missing.phase, 'mixing');
+  assert.equal(missing.progress, before.progress);
+  assert.deepEqual(missing.orbs, before.orbs);
+  assert.deepEqual(missing.center, before.center);
+  assert.equal(controller.update(close().reverse(), mixed, 2150).progress, before.progress);
+  assert.deepEqual(controller.state.orbs.map(orb => orb.slot), ['left', 'right']);
+});
+
+test('repeated forging holds its shape through missing hands and pose jitter', () => {
+  const controller = createElementFusion();
+  for (let cycle = 0; cycle < 4; cycle++) {
+    const start = cycle * 8000;
+    const forged = hold(controller, mixed, start, start + 5000);
+    assert.equal(forged.phase, 'fused');
+    for (const [offset, hands] of [[50, [close()[1]]], [200, []], [300, close().map(h => ({ ...h, fist: true }))]]) {
+      const state = controller.update(hands, mixed, start + 5000 + offset);
+      assert.equal(state.phase, 'fused');
+      assert.deepEqual(state.fused.center, forged.fused.center);
+      if (offset < 300) assert.equal(state.fused.radius, forged.fused.radius);
+      else assert.ok(state.fused.radius > forged.fused.radius * .75);
+    }
+    controller.update(apart(), mixed, start + 5400);
+    assert.equal(controller.update(apart(), mixed, start + 6500).phase, 'idle');
+  }
+});

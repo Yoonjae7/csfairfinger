@@ -23,10 +23,11 @@ For local development, use `npm run dev -- --host 127.0.0.1`.
 
 ## Play
 
-- Spread two hands. Your thumb and index fingertips define the 2D portal, which can fold into a bowtie as you rotate a hand. In 3D Mesh mode, all five fingertips form two filtered mesh bands. In 3D Elements mode, each hand holds its own Fire or Water orb. Choose each hand’s element independently. The assignments follow your first left/right positions in the mirrored view and stay attached as your hands move.
+- Spread two hands. Your thumb and index fingertips define the 2D portal, which can fold into a bowtie as you rotate a hand. In 3D Mesh mode, all five fingertips form two filtered mesh bands. In 3D Elements mode, each hand holds its own flowing Fire or Water effect. Choose each hand’s element independently. The assignments follow your first left/right positions in the mirrored view and stay attached as your hands move.
 - Touch thumb to pinky to change the look, or that hand’s element in 3D Elements, once; release before changing it again. Close both fists to cycle through 2D Portal, 3D Mesh, and 3D Elements. The gesture guards prevent a held pose from cycling rapidly.
 - Choose among six looks in 2D Portal and 3D Mesh, or Fire and Water in 3D Elements mode, and adjust strength on screen.
-- Bring both elemental orbs together and hold for five seconds. The mixing animation and countdown build toward Steamfire (Fire + Water), a larger Tidal sphere (Water + Water), or Inferno with a fire splash burst (Fire + Fire). Separate your hands to split the result. Brief tracking flicker pauses the timer; a longer interruption cancels the hold. Changing an element, changing mode, or ending the session resets fusion.
+- Bring both elements together and hold for five seconds. The mixing animation builds toward Steamfire (Fire + Water), a larger Tidal sphere (Water + Water), or Inferno with a fire splash burst (Fire + Fire). Separate your hands to split the result. Brief tracking loss holds the effect in place and pauses the timer; a longer interruption cancels the hold. Changing an element, changing mode, or ending the session resets fusion.
+- Open your fingers to grow the elements and curl them to shrink them. Fire uses a turbulent 3D flame volume that bends and trails your movement (with a Canvas fallback if WebGL is unavailable); Water forms a circular flowing current with droplets in its wake. Element pinches are ignored during contact and fusion.
 - The portal appears only while one or two hands are visible to the camera. Without a tracked hand, visitors see the mirrored camera feed.
 - Capture a branded PNG using **Capture this moment** while a hand is tracked. **End session** stops the camera for the next visitor.
 

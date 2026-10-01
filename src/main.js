@@ -2,6 +2,7 @@ import './styles.css';
 import { createScene } from './scene.js';
 import { analyzeHand, createGestureController } from './gestures.js';
 import { fusionName } from './element-fusion.js';
+import { elementOrbsFromHands } from './portal-geometry.js';
 
 const $ = selector => document.querySelector(selector);
 const canvas = $('#scene');
@@ -96,6 +97,11 @@ async function loadLandmarker() {
   return landmarker;
 }
 
+function handsTouching(hands) {
+  const orbs = elementOrbsFromHands(hands, 1280, 800);
+  return orbs.length === 2 && Math.hypot(orbs[0].center.x - orbs[1].center.x, orbs[0].center.y - orbs[1].center.y) < (orbs[0].contactRadius + orbs[1].contactRadius) * 1.2;
+}
+
 function processHands(result) {
   const scale = Math.max(1280 / video.videoWidth, 800 / video.videoHeight);
   const drawWidth = video.videoWidth * scale;
@@ -118,9 +124,9 @@ function processHands(result) {
     for (const slot of ['left', 'right']) {
       const hand = hands.find(candidate => candidate.slot === slot);
       const local = handGestures[slot].update(gesture.dualFist || !hand ? [] : [hand], performance.now());
-      if (local.nextFilter) {
+      if (local.nextFilter && scene.state.fusion.phase === 'idle' && !handsTouching(hands)) {
         selectElement(scene.state.elements[slot] === 'fire' ? 'water' : 'fire', slot);
-        setHint(`${slot === 'left' ? 'Left' : 'Right'} hand element changed. Bring both orbs together and hold for five seconds to forge them.`);
+        setHint(`${slot === 'left' ? 'Left' : 'Right'} hand element changed. Bring both elements together and hold for five seconds to forge them.`);
       }
     }
   } else if (gesture.nextFilter) {
@@ -297,19 +303,11 @@ selectFilter(scene.state.filter);
 selectElement(scene.state.elements.left, 'left');
 selectElement(scene.state.elements.right, 'right');
 scene.onFusionChange(fusion => {
-  const active = scene.state.mode === 'elemental';
-  $('#fusion-hud').hidden = !active || fusion.phase === 'idle' || fusion.orbs.length === 0;
   $('#split-elements').hidden = fusion.phase === 'idle';
   const kind = scene.state.elements.left === scene.state.elements.right ? scene.state.elements.left : 'hybrid';
   const name = fusionName(kind);
   $('#fusion-status').textContent = fusion.phase === 'fused' ? `${name} forged! Pull your hands apart to split it.`
     : fusion.phase === 'mixing' ? `Forging ${name}… Keep both hands close.`
     : `${scene.state.elements.left === 'fire' ? 'Fire' : 'Water'} + ${scene.state.elements.right === 'fire' ? 'Fire' : 'Water'} → ${name}. Start with hands apart.`;
-  const title = fusion.phase === 'fused' ? `${name.toUpperCase()} FORGED` : `FORGING ${name.toUpperCase()}`;
-  if ($('#fusion-title').textContent !== title) $('#fusion-title').textContent = title;
-  $('#fusion-meter').hidden = fusion.phase === 'fused';
-  $('#fusion-progress').value = fusion.progress * 5;
-  $('#fusion-seconds').textContent = `${(5 - fusion.progress * 5).toFixed(1)}s`;
-  $('#fusion-hud').classList.toggle('fused', fusion.phase === 'fused');
   updateEffectLabel();
 });

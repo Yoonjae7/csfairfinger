@@ -193,15 +193,23 @@ export function createScene(canvas) {
   requestAnimationFrame(frame);
 
   function setHands(hands) {
-    const ordered = handSlots.assign(hands, performance.now());
+    const now = performance.now();
+    const ordered = handSlots.assign(hands, now);
     const previous = state.hands;
+    const dt = Math.max(.016, (now - state.lastHandUpdate) / 1000);
     state.hands = ordered.map(hand => {
       const old = previous.find(candidate => candidate.slot === hand.slot);
-      return { ...hand, landmarks: old
+      const landmarks = old
         ? hand.landmarks.map((p, i) => point(old.landmarks[i].x + (p.x - old.landmarks[i].x) * .42, old.landmarks[i].y + (p.y - old.landmarks[i].y) * .42))
-        : hand.landmarks };
+        : hand.landmarks;
+      const velocity = old && dt < .3 ? point(
+        Math.max(-1300, Math.min(1300, (landmarks[0].x - old.landmarks[0].x) * WIDTH / dt)),
+        Math.max(-1300, Math.min(1300, (landmarks[0].y - old.landmarks[0].y) * HEIGHT / dt)),
+      ) : point(0, 0);
+      const motion = point((old?.motion?.x || 0) * .65 + velocity.x * .35, (old?.motion?.y || 0) * .65 + velocity.y * .35);
+      return { ...hand, motion, landmarks };
     });
-    state.lastHandUpdate = performance.now();
+    state.lastHandUpdate = now;
     return state.hands;
   }
 
