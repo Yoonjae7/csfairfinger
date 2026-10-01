@@ -104,8 +104,9 @@ function processHands(result) {
     const landmarks = raw.map(p => ({
       x: ((1 - p.x) * drawWidth + (1280 - drawWidth) / 2) / 1280,
       y: (p.y * drawHeight + (800 - drawHeight) / 2) / 800,
+      z: p.z * drawWidth / 1280,
     }));
-    return { ...analyzeHand(landmarks), handedness: result.handedness?.[index]?.[0]?.categoryName };
+    return { ...analyzeHand(landmarks, result.worldLandmarks?.[index]), handedness: result.handedness?.[index]?.[0]?.categoryName };
   });
   const hands = scene.setHands(detected);
   const gesture = gestureController.update(hands, performance.now());
