@@ -1,8 +1,6 @@
 const distance = (a, b) => Math.hypot((a.x - b.x) * 1280, (a.y - b.y) * 800);
 const distance3D = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
-const subtract = (a, b) => ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z });
 const validDepth = points => points?.length === 21 && points.every(p => [p.x, p.y, p.z].every(Number.isFinite));
-export const PINCH_CONFIRM_MS = 90;
 
 export function analyzeHand(landmarks, worldLandmarks) {
   const wrist = landmarks[0];
@@ -17,23 +15,22 @@ export function analyzeHand(landmarks, worldLandmarks) {
   const axis = { x: (landmarks[9].x - wrist.x) * 1280, y: (landmarks[9].y - wrist.y) * 800 };
   const across = { x: (landmarks[17].x - landmarks[5].x) * 1280, y: (landmarks[17].y - landmarks[5].y) * 800 };
   const visibleWidth = Math.abs(axis.x * across.y - axis.y * across.x) / Math.max(palmLength, 1);
-  let palmVisible = palmLength > 15 && visibleWidth > palmLength * .35;
+  const palmVisible = palmLength > 12 && visibleWidth > palmLength * .25;
   const depth = validDepth(worldLandmarks) ? worldLandmarks : validDepth(landmarks)
     ? landmarks.map(p => ({ x: p.x * 1280, y: p.y * 800, z: p.z * 1280 })) : null;
-  let tipGap = distance(landmarks[4], landmarks[20]);
-  let pinchSize = Math.max(palmWidth, palmLength * .6);
+  const tipGap = distance(landmarks[4], landmarks[20]);
+  const contact = Math.max(27, palmWidth * .47);
+  let separatedInDepth = false;
   if (depth) {
-    const a = subtract(depth[5], depth[0]), b = subtract(depth[17], depth[0]);
-    const normal = { x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x };
-    palmVisible &&= Math.abs(normal.z) / Math.max(Math.hypot(normal.x, normal.y, normal.z), 1e-9) > .42;
-    tipGap = distance3D(depth[4], depth[20]);
-    pinchSize = Math.max(distance3D(depth[5], depth[17]), distance3D(depth[0], depth[9]) * .6);
+    const size = Math.max(distance3D(depth[5], depth[17]), distance3D(depth[0], depth[9]) * .6);
+    // Estimated world fingertips can be offset even during real contact.
+    // Use depth only to reject clear separation, not to demand exact 3D contact.
+    separatedInDepth = Math.abs(depth[4].z - depth[20].z) > size * .8;
   }
-  const thumbPinkyPinch = palmVisible && !fist && tipGap < pinchSize * .35
-    && distance(landmarks[4], landmarks[20]) < Math.max(palmWidth, palmLength * .6) * .47;
+  const thumbPinkyPinch = palmVisible && !fist && !separatedInDepth && tipGap < contact;
   // An occluded/sideways hand is unknown, not a released pinch. Require a
   // clearly visible separation before another change can be armed.
-  const thumbPinkyReleased = palmVisible && !fist && tipGap > pinchSize * .52;
+  const thumbPinkyReleased = palmVisible && !fist && tipGap > contact * 1.2;
 
   return { landmarks, fist, thumbPinkyPinch, thumbPinkyReleased };
 }
@@ -45,8 +42,6 @@ export function createGestureController() {
   let modeReleasedAt = null;
   let lastFilterAt = -Infinity;
   let lastModeAt = -Infinity;
-  let pinchStartedAt = null;
-  let pinchHandKey = null;
   let lastSampleAt = null;
 
   return {
@@ -54,9 +49,7 @@ export function createGestureController() {
       const dualFist = hands.length >= 2 && hands.every(hand => hand.fist);
       const pinchHand = !dualFist && hands.find(hand => !hand.fist && hand.thumbPinkyPinch);
       const filterPinch = Boolean(pinchHand);
-      if (lastSampleAt !== null && now - lastSampleAt > 200) {
-        pinchStartedAt = null; filterReleasedAt = null;
-      }
+      if (lastSampleAt !== null && now - lastSampleAt > 700) filterReleasedAt = null;
       lastSampleAt = now;
       let nextFilter = false;
       let toggleMode = false;
@@ -75,15 +68,14 @@ export function createGestureController() {
 
       if (filterPinch) {
         filterReleasedAt = null;
-        const key = pinchHand.slot ?? pinchHand.handedness ?? hands.indexOf(pinchHand);
-        if (pinchStartedAt === null || key !== pinchHandKey) { pinchStartedAt = now; pinchHandKey = key; }
-        if (filterArmed && now - pinchStartedAt >= PINCH_CONFIRM_MS && now - lastFilterAt >= 350) {
+        // A tap may only be visible for one camera frame. Orientation already
+        // rejects clapping overlap, so do not require a prolonged held pinch.
+        if (filterArmed && now - lastFilterAt >= 350) {
           nextFilter = true;
           filterArmed = false;
           lastFilterAt = now;
         }
       } else {
-        pinchStartedAt = null; pinchHandKey = null;
         const released = hands.some(hand => hand.thumbPinkyReleased ?? (!hand.fist && !hand.thumbPinkyPinch));
         if (released && !dualFist) {
           if (filterReleasedAt === null) filterReleasedAt = now;
@@ -100,8 +92,6 @@ export function createGestureController() {
       modeReleasedAt = null;
       lastFilterAt = -Infinity;
       lastModeAt = -Infinity;
-      pinchStartedAt = null;
-      pinchHandKey = null;
       lastSampleAt = null;
     },
   };

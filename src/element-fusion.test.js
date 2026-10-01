@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createElementFusion } from './element-fusion.js';
+import { createElementFusion, mixingRotation } from './element-fusion.js';
 import { createHandSlots } from './hand-slots.js';
 
 function hand(x, slot, handedness) {
@@ -84,4 +84,26 @@ test('closed fists cannot start fusion while the dimension gesture is held', () 
   const fists = close().map(hand => ({ ...hand, fist: true }));
   for (let now = 0; now <= 6000; now += 50) controller.update(fists, mixed, now);
   assert.equal(controller.state.phase, 'idle');
+});
+
+test('forging rotation stays smooth after the booth has run for hours', () => {
+  for (const time of [5, 300, 30000]) {
+    const movement = mixingRotation(time + .05, .41) - mixingRotation(time, .4);
+    assert.ok(movement > 0 && movement < .2);
+  }
+});
+
+test('brief tracking gaps keep the forging and fused shapes in place', () => {
+  const controller = createElementFusion();
+  const mixing = hold(controller, mixed, 0, 2000);
+  const gap = controller.update([close()[0]], mixed, 2050);
+  assert.deepEqual(gap.orbs, mixing.orbs);
+  assert.deepEqual(gap.center, mixing.center);
+  controller.update(close(), mixed, 2100);
+  hold(controller, mixed, 2150, 5250);
+  const fused = controller.state.fused;
+  assert.ok(fused);
+  const lost = controller.update([], mixed, 5300);
+  assert.equal(lost.fused.radius, fused.radius);
+  assert.deepEqual(lost.fused.center, fused.center);
 });

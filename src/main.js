@@ -298,19 +298,11 @@ selectFilter(scene.state.filter);
 selectElement(scene.state.elements.left, 'left');
 selectElement(scene.state.elements.right, 'right');
 scene.onFusionChange(fusion => {
-  const active = scene.state.mode === 'elemental';
-  $('#fusion-hud').hidden = !active || fusion.phase === 'idle' || fusion.orbs.length === 0;
   $('#split-elements').hidden = fusion.phase === 'idle';
   const kind = scene.state.elements.left === scene.state.elements.right ? scene.state.elements.left : 'hybrid';
   const name = fusionName(kind);
   $('#fusion-status').textContent = fusion.phase === 'fused' ? `${name} forged! Pull your hands apart to split it.`
     : fusion.phase === 'mixing' ? `Forging ${name}… Keep both hands close.`
     : `${scene.state.elements.left === 'fire' ? 'Fire' : 'Water'} + ${scene.state.elements.right === 'fire' ? 'Fire' : 'Water'} → ${name}. Start with hands apart.`;
-  const title = fusion.phase === 'fused' ? `${name.toUpperCase()} FORGED` : `FORGING ${name.toUpperCase()}`;
-  if ($('#fusion-title').textContent !== title) $('#fusion-title').textContent = title;
-  $('#fusion-meter').hidden = fusion.phase === 'fused';
-  $('#fusion-progress').value = fusion.progress * 5;
-  $('#fusion-seconds').textContent = `${(5 - fusion.progress * 5).toFixed(1)}s`;
-  $('#fusion-hud').classList.toggle('fused', fusion.phase === 'fused');
   updateEffectLabel();
 });

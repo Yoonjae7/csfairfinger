@@ -5,14 +5,14 @@ import { analyzeHand, createGestureController } from './gestures.js';
 test('thumb-to-pinky pinch changes the filter once until released', () => {
   const controller = createGestureController();
   const pinch = [{ fist: false, thumbPinkyPinch: true }];
-  assert.equal(controller.update(pinch, 1000).nextFilter, false);
-  assert.equal(controller.update(pinch, 1090).nextFilter, true);
+  assert.equal(controller.update(pinch, 1000).nextFilter, true);
+  assert.equal(controller.update(pinch, 1090).nextFilter, false);
   assert.equal(controller.update(pinch, 1400).nextFilter, false);
   const released = [{ fist: false, thumbPinkyPinch: false, thumbPinkyReleased: true }];
   controller.update(released, 1500);
   controller.update(released, 1680);
-  assert.equal(controller.update(pinch, 1800).nextFilter, false);
-  assert.equal(controller.update(pinch, 1890).nextFilter, true);
+  assert.equal(controller.update(pinch, 1800).nextFilter, true);
+  assert.equal(controller.update(pinch, 1890).nextFilter, false);
 });
 
 test('two fists switch mode once and suppress an accidental filter change', () => {
@@ -85,7 +85,7 @@ test('sideways clapping overlap is rejected even when projected fingertips touch
 });
 
 test('3D depth rejects apparent contact on an otherwise visible palm', () => {
-  const points = openPalm(); points[4] = { ...points[20], z: .09 };
+  const points = openPalm(); points[4] = { ...points[20], z: .2 };
   assert.equal(analyzeHand(points, worldFrom(points)).thumbPinkyPinch, false);
   assert.equal(analyzeHand(points).thumbPinkyPinch, false);
   points[4] = { ...points[20], z: .004 };
@@ -105,23 +105,20 @@ test('intentional contact still works across hand sizes, image rotations, and mo
   assert.equal(analyzeHand(tilted, worldFrom(tilted)).thumbPinkyPinch, true);
 });
 
-test('brief overlap and gaps between detections cannot confirm a tap', () => {
+test('a one-frame tap switches immediately and held contact stays latched', () => {
   const controller = createGestureController();
   const pinch = [{ slot: 'left', fist: false, thumbPinkyPinch: true }];
-  assert.equal(controller.update(pinch, 0).nextFilter, false);
-  assert.equal(controller.update(pinch, 50).nextFilter, false);
-  assert.equal(controller.update([], 70).nextFilter, false);
-  assert.equal(controller.update(pinch, 100).nextFilter, false);
+  assert.equal(controller.update(pinch, 0).nextFilter, true);
+  assert.equal(controller.update([], 50).nextFilter, false);
   assert.equal(controller.update(pinch, 500).nextFilter, false);
-  assert.equal(controller.update(pinch, 550).nextFilter, false);
-  assert.equal(controller.update(pinch, 590).nextFilter, true);
+  assert.equal(controller.update(pinch, 590).nextFilter, false);
 });
 
 test('sideways poses and lost tracking cannot rearm an already held pinch', () => {
   const controller = createGestureController();
   const pinch = [{ fist: false, thumbPinkyPinch: true, thumbPinkyReleased: false }];
-  controller.update(pinch, 0);
-  assert.equal(controller.update(pinch, 90).nextFilter, true);
+  assert.equal(controller.update(pinch, 0).nextFilter, true);
+  assert.equal(controller.update(pinch, 90).nextFilter, false);
   const edge = [{ fist: false, thumbPinkyPinch: false, thumbPinkyReleased: false }];
   for (let now = 150; now <= 700; now += 50) controller.update(edge, now);
   controller.update(pinch, 750);
@@ -131,15 +128,26 @@ test('sideways poses and lost tracking cannot rearm an already held pinch', () =
   assert.equal(controller.update(pinch, 1450).nextFilter, false);
   const open = [{ fist: false, thumbPinkyPinch: false, thumbPinkyReleased: true }];
   controller.update(open, 1500); controller.update(open, 1680);
-  controller.update(pinch, 1700);
-  assert.equal(controller.update(pinch, 1790).nextFilter, true);
+  assert.equal(controller.update(pinch, 1700).nextFilter, true);
+  assert.equal(controller.update(pinch, 1790).nextFilter, false);
 });
 
-test('alternating hands cannot add their noisy contact frames into one confirmed tap', () => {
-  const controller = createGestureController();
-  const pinch = slot => [{ slot, fist: false, thumbPinkyPinch: true }];
-  controller.update(pinch('left'), 0);
-  assert.equal(controller.update(pinch('right'), 60).nextFilter, false);
-  assert.equal(controller.update(pinch('left'), 120).nextFilter, false);
-  assert.equal(controller.update(pinch('left'), 210).nextFilter, true);
+test('estimated world fingertip offsets do not block a visible tap', () => {
+  const points = openPalm(); points[4] = { ...points[20], x: points[20].x - .008, z: .03 };
+  const world = worldFrom(points);
+  world[4].x += .03; world[4].y += .025;
+  assert.equal(analyzeHand(points, world).thumbPinkyPinch, true);
+  // Moderate palm foreshortening during a natural thumb/pinky curl.
+  const tilted = points.map(p => ({ ...p, x: .5 + (p.x - .5) * .32 }));
+  assert.equal(analyzeHand(tilted, world).thumbPinkyPinch, true);
+});
+
+test('look and per-hand element controllers accept the same short physical tap', () => {
+  const look = createGestureController(), left = createGestureController(), right = createGestureController();
+  const points = openPalm(); points[4] = { ...points[20], x: points[20].x - .008 };
+  const hand = { ...analyzeHand(points, worldFrom(points)), slot: 'left' };
+  assert.equal(look.update([hand], 0).nextFilter, true);
+  assert.equal(left.update([hand], 0).nextFilter, true);
+  assert.equal(right.update([], 0).nextFilter, false);
+  assert.equal(left.update([hand], 500).nextFilter, false);
 });

@@ -11,6 +11,7 @@ export function elementOrbsFromHands(hands, width, height) {
     );
     return {
       slot: hand.slot,
+      motion: hand.motion || point(0, 0),
       center: point(tips.reduce((sum, p) => sum + p.x, 0) / 5, tips.reduce((sum, p) => sum + p.y, 0) / 5),
       radius: clamp(palm * .9 + 45, 72, 110),
       tilt: clamp((tips[4].y - tips[0].y) / Math.max(palm, 25), -.5, .5),
