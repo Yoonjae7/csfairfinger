@@ -1,5 +1,29 @@
 const point = (x, y) => ({ x, y });
 const tip = (hand, index, width, height) => point(hand.landmarks[index].x * width, hand.landmarks[index].y * height);
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+export function elementalFromHands(hands, width, height) {
+  if (!hands.length) return null;
+  const anchors = hands.slice(0, 2).map(hand => {
+    const fingertips = [4, 8, 12, 16, 20].map(index => tip(hand, index, width, height));
+    return point(
+      fingertips.reduce((sum, p) => sum + p.x, 0) / fingertips.length,
+      fingertips.reduce((sum, p) => sum + p.y, 0) / fingertips.length,
+    );
+  });
+  if (anchors.length === 1) {
+    return { center: anchors[0], radius: 112, tilt: -.12, variant: 'single' };
+  }
+  const dx = anchors[1].x - anchors[0].x;
+  const dy = anchors[1].y - anchors[0].y;
+  const span = Math.hypot(dx, dy);
+  return {
+    center: point((anchors[0].x + anchors[1].x) / 2, (anchors[0].y + anchors[1].y) / 2),
+    radius: clamp(span * .5, 125, 290),
+    tilt: clamp(dy / Math.max(span, 1), -.42, .42),
+    variant: 'dual',
+  };
+}
 
 function orderCorners(corners, bowtie) {
   const sorted = [...corners].sort((a, b) => a.x - b.x);

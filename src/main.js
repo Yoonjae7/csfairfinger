@@ -12,8 +12,12 @@ const cameraState = $('#camera-state');
 const trackingState = $('#tracking-state');
 const hint = $('#stage-hint');
 const filterButtons = [...document.querySelectorAll('[data-filter]')];
+const elementButtons = [...document.querySelectorAll('[data-element]')];
 const modeButtons = [...document.querySelectorAll('[data-mode]')];
 const filterNames = filterButtons.map(button => button.dataset.filter);
+const elementNames = elementButtons.map(button => button.dataset.element);
+const modeNames = modeButtons.map(button => button.dataset.mode);
+const modeLabels = { '2d': '2D portal', '3d': '3D mesh', elemental: '3D elements' };
 const gestureController = createGestureController();
 let stream = null;
 let landmarker = null;
@@ -104,13 +108,13 @@ function processHands(result) {
   handCount = hands.length;
   updateCaptureAvailability();
   if (gesture.toggleMode) {
-    selectMode(scene.state.mode === '2d' ? '3d' : '2d');
-    setHint(`Mode switched to ${scene.state.mode === '3d' ? '3D mesh' : '2D portal'}. Spread your hands again to reshape it.`);
+    selectMode(modeNames[(modeNames.indexOf(scene.state.mode) + 1) % modeNames.length]);
+    setHint(`Mode switched to ${modeLabels[scene.state.mode]}. Spread your hands again to reshape it.`);
   } else if (gesture.nextFilter) {
-    selectFilter(filterNames[(filterNames.indexOf(scene.state.filter) + 1) % filterNames.length]);
-    setHint('Look changed. Release your thumb and pinky, then touch them again to change it once more.');
+    cycleLook(1);
+    setHint(`${scene.state.mode === 'elemental' ? 'Element' : 'Look'} changed. Release your thumb and pinky, then touch them again to change it once more.`);
   }
-  trackingState.textContent = gesture.dualFist ? 'TWO FISTS / MODE SWITCH' : gesture.filterPinch ? 'THUMB + PINKY / NEXT LOOK' : hands.length >= 2 ? `TWO HANDS / ${scene.state.mode === '3d' ? 'MESH' : 'PORTAL'} LIVE` : hands.length === 1 ? 'ONE HAND / MINI PORTAL' : 'SHOW YOUR HANDS TO OPEN PORTAL';
+  trackingState.textContent = gesture.dualFist ? 'TWO FISTS / MODE SWITCH' : gesture.filterPinch ? `THUMB + PINKY / NEXT ${scene.state.mode === 'elemental' ? 'ELEMENT' : 'LOOK'}` : hands.length >= 2 ? `TWO HANDS / ${scene.state.mode === '3d' ? 'MESH' : scene.state.mode === 'elemental' ? 'ELEMENTS' : 'PORTAL'} LIVE` : hands.length === 1 ? `ONE HAND / MINI ${scene.state.mode === 'elemental' ? 'ELEMENT' : 'PORTAL'}` : 'SHOW YOUR HANDS TO OPEN PORTAL';
 }
 
 function trackHands() {
@@ -148,7 +152,7 @@ async function openCamera() {
     hideWelcome();
     setSourceStatus('CAMERA LIVE', true);
     trackingState.textContent = 'LOADING HAND TRACKER…';
-    setHint('Spread two hands to open the portal. Touch thumb to pinky for the next look; close both fists to change mode.');
+    setHint('Spread two hands to open the effect. Touch thumb to pinky for the next look or element; close both fists to change mode.');
     try {
       await loadLandmarker();
       if (request !== cameraRequest || !stream) return;
@@ -177,6 +181,9 @@ function selectMode(mode) {
     button.classList.toggle('active', active);
     button.setAttribute('aria-pressed', String(active));
   });
+  $('#filter-section').hidden = mode === 'elemental';
+  $('#element-section').hidden = mode !== 'elemental';
+  updateEffectLabel();
 }
 
 function selectFilter(name) {
@@ -187,6 +194,31 @@ function selectFilter(name) {
     button.setAttribute('aria-pressed', String(active));
   });
   $('#filter-count').textContent = `${String(filterNames.indexOf(name) + 1).padStart(2, '0')} / 06`;
+  updateEffectLabel();
+}
+
+function selectElement(name) {
+  scene.setElement(name);
+  elementButtons.forEach(button => {
+    const active = button.dataset.element === name;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+  $('#element-count').textContent = `${String(elementNames.indexOf(name) + 1).padStart(2, '0')} / 02`;
+  updateEffectLabel();
+}
+
+function updateEffectLabel() {
+  const look = scene.state.mode === 'elemental' ? scene.state.element : scene.state.filter;
+  $('#effect-label').textContent = `◌  ${modeLabels[scene.state.mode].toUpperCase()} / ${look.toUpperCase()}`;
+}
+
+function cycleLook(direction) {
+  if (scene.state.mode === 'elemental') {
+    selectElement(elementNames[(elementNames.indexOf(scene.state.element) + direction + elementNames.length) % elementNames.length]);
+  } else {
+    selectFilter(filterNames[(filterNames.indexOf(scene.state.filter) + direction + filterNames.length) % filterNames.length]);
+  }
 }
 
 function capture() {
@@ -219,6 +251,7 @@ $('#end-session').addEventListener('click', () => endSession());
 $('#capture').addEventListener('click', capture);
 modeButtons.forEach(button => button.addEventListener('click', () => selectMode(button.dataset.mode)));
 filterButtons.forEach(button => button.addEventListener('click', () => selectFilter(button.dataset.filter)));
+elementButtons.forEach(button => button.addEventListener('click', () => selectElement(button.dataset.element)));
 $('#strength').addEventListener('input', event => {
   const value = Number(event.target.value);
   scene.setStrength(value / 100);
@@ -227,9 +260,9 @@ $('#strength').addEventListener('input', event => {
 
 document.addEventListener('keydown', event => {
   if (event.target instanceof HTMLInputElement || event.target instanceof HTMLButtonElement) return;
-  if (event.key.toLowerCase() === 'c') selectMode(scene.state.mode === '2d' ? '3d' : '2d');
-  if (event.key.toLowerCase() === 'n' || event.key === 'ArrowRight') selectFilter(filterNames[(filterNames.indexOf(scene.state.filter) + 1) % filterNames.length]);
-  if (event.key.toLowerCase() === 'p' || event.key === 'ArrowLeft') selectFilter(filterNames[(filterNames.indexOf(scene.state.filter) + filterNames.length - 1) % filterNames.length]);
+  if (event.key.toLowerCase() === 'c') selectMode(modeNames[(modeNames.indexOf(scene.state.mode) + 1) % modeNames.length]);
+  if (event.key.toLowerCase() === 'n' || event.key === 'ArrowRight') cycleLook(1);
+  if (event.key.toLowerCase() === 'p' || event.key === 'ArrowLeft') cycleLook(-1);
   if (event.key === ' ' && !captureButton.disabled) { event.preventDefault(); capture(); }
 });
 
@@ -237,3 +270,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) { handCount = 0; updateCaptureAvailability(); }
 });
 window.addEventListener('pagehide', stopCamera);
+
+selectMode(scene.state.mode);
+selectFilter(scene.state.filter);
+selectElement(scene.state.element);

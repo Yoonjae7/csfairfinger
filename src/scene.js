@@ -1,4 +1,5 @@
-import { portalFromHands } from './portal-geometry.js';
+import { elementalFromHands, portalFromHands } from './portal-geometry.js';
+import { drawElement } from './elements.js';
 
 const WIDTH = 1280;
 const HEIGHT = 800;
@@ -15,10 +16,12 @@ export function createScene(canvas) {
   pixelCanvas.width = 96;
   pixelCanvas.height = 60;
   const pixelCtx = pixelCanvas.getContext('2d');
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const state = {
     source: null,
     mode: '3d',
     filter: 'prism',
+    element: 'fire',
     strength: 0.72,
     hands: [],
     lastHandUpdate: 0,
@@ -141,8 +144,9 @@ export function createScene(canvas) {
     if (!state.hands.length || performance.now() - state.lastHandUpdate > 500) return;
     for (const hand of state.hands) {
       c.save();
-      c.strokeStyle = hand.thumbPinkyPinch ? '#d4ffdcdb' : '#e9e3ff99';
-      c.fillStyle = hand.thumbPinkyPinch ? '#c5ffd1' : '#e9e3ff';
+      const elementColor = state.element === 'fire' ? '#ffd09c' : '#b3f4ff';
+      c.strokeStyle = state.mode === 'elemental' ? `${elementColor}a8` : hand.thumbPinkyPinch ? '#d4ffdcdb' : '#e9e3ff99';
+      c.fillStyle = state.mode === 'elemental' ? elementColor : hand.thumbPinkyPinch ? '#c5ffd1' : '#e9e3ff';
       c.lineWidth = 2;
       for (const [from, to] of [[0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8], [0, 9], [9, 10], [10, 11], [11, 12], [0, 13], [13, 14], [14, 15], [15, 16], [0, 17], [17, 18], [18, 19], [19, 20]]) {
         const p = hand.landmarks[from], q = hand.landmarks[to];
@@ -159,11 +163,15 @@ export function createScene(canvas) {
     updateSource();
     c.clearRect(0, 0, WIDTH, HEIGHT);
     c.drawImage(sourceCanvas, 0, 0);
-    if (state.filter === 'dream') {
+    if (state.mode !== 'elemental' && state.filter === 'dream') {
       c.fillStyle = '#e6c4ff'; c.globalAlpha = .10 * state.strength; c.fillRect(0, 0, WIDTH, HEIGHT); c.globalAlpha = 1;
     }
     const liveHands = performance.now() - state.lastHandUpdate < 500 ? state.hands : [];
-    drawPortal(c, liveHands);
+    if (state.mode === 'elemental') {
+      drawElement(c, sourceCanvas, elementalFromHands(liveHands, WIDTH, HEIGHT), state.element, state.strength, reducedMotion.matches ? 0 : performance.now() / 1000);
+    } else {
+      drawPortal(c, liveHands);
+    }
     if (includeUI) drawHands(c);
   }
 
@@ -188,6 +196,7 @@ export function createScene(canvas) {
     setHands,
     setMode(mode) { state.mode = mode; },
     setFilter(filter) { state.filter = filter; },
+    setElement(element) { state.element = element; },
     setStrength(value) { state.strength = value; },
     capture() {
       const exportCanvas = document.createElement('canvas');

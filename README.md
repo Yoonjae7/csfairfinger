@@ -23,13 +23,13 @@ For local development, use `npm run dev -- --host 127.0.0.1`.
 
 ## Play
 
-- Spread two hands. Your thumb and index fingertips define the 2D portal, which can fold into a bowtie as you rotate a hand. In 3D mode, all five fingertips form two filtered mesh bands. One hand makes a small portal.
-- Touch thumb to pinky to change the look once; release before changing it again. Close both fists to switch between 2D and 3D. The gesture guards prevent a held pose from cycling rapidly.
-- Choose among six looks and adjust strength on screen.
+- Spread two hands. Your thumb and index fingertips define the 2D portal, which can fold into a bowtie as you rotate a hand. In 3D Mesh mode, all five fingertips form two filtered mesh bands. In 3D Elements mode, your hands shape a rotating Fire or Water orb with projected depth, front and back orbit rings, heat haze and embers, or refraction and bubbles. One hand makes a smaller orb.
+- Touch thumb to pinky to change the look or element once; release before changing it again. Close both fists to cycle through 2D Portal, 3D Mesh, and 3D Elements. The gesture guards prevent a held pose from cycling rapidly.
+- Choose among six looks in 2D Portal and 3D Mesh, or Fire and Water in 3D Elements mode, and adjust strength on screen.
 - The portal appears only while one or two hands are visible to the camera. Without a tracked hand, visitors see the mirrored camera feed.
 - Capture a branded PNG using **Capture this moment** while a hand is tracked. **End session** stops the camera for the next visitor.
 
-Shortcuts: `C` changes dimension, `N` / `P` (or arrow keys) cycle looks, and `Space` captures. Buttons have keyboard focus and accessible labels.
+Shortcuts: `C` changes dimension, `N` / `P` (or arrow keys) cycle looks or elements, and `Space` captures. Buttons have keyboard focus and accessible labels.
 
 ## Privacy and assets
 

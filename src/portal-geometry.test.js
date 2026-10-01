@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { portalFromHands } from './portal-geometry.js';
+import { elementalFromHands, portalFromHands } from './portal-geometry.js';
 
 function hand(x, rotated = false) {
   const landmarks = Array.from({ length: 21 }, () => ({ x, y: .5 }));
@@ -31,4 +31,15 @@ test('3D mode uses two fingertip mesh bands and one hand keeps a small portal', 
 test('the portal is absent when no hands are tracked', () => {
   assert.equal(portalFromHands([], '2d', 1280, 800), null);
   assert.equal(portalFromHands([], '3d', 1280, 800), null);
+});
+
+test('3D elements follow one or two hands and grow into a larger orb', () => {
+  assert.equal(elementalFromHands([], 1280, 800), null);
+  const single = elementalFromHands([hand(.3)], 1280, 800);
+  const dual = elementalFromHands([hand(.3), hand(.7)], 1280, 800);
+  assert.equal(single.variant, 'single');
+  assert.equal(dual.variant, 'dual');
+  assert.ok(dual.radius > single.radius);
+  assert.ok(Math.abs(dual.center.x - 640) < 30);
+  assert.equal(dual.tilt, 0);
 });
