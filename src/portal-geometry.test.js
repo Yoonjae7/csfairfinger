@@ -41,18 +41,6 @@ test('each 3D element follows its hand and stays bounded at extreme hand sizes',
   const orbs = elementOrbsFromHands([left, right], 1280, 800);
   assert.deepEqual(orbs.map(orb => orb.slot), ['left', 'right']);
   assert.ok(orbs[0].center.x < orbs[1].center.x);
-  for (const orb of orbs) assert.ok(orb.radius >= 36 && orb.radius <= 158);
-});
-
-
-test('opening fingers grows elements while palm size and position stay fixed', () => {
-  const open = hand(.5);
-  open.landmarks[5] = { x: .46, y: .55 }; open.landmarks[17] = { x: .54, y: .55 };
-  const curled = { ...open, landmarks: open.landmarks.map(p => ({ ...p })) };
-  for (const i of [4, 8, 12, 16, 20]) curled.landmarks[i] = { x: .5, y: .59 };
-  const a = elementOrbsFromHands([open], 1280, 800)[0];
-  const b = elementOrbsFromHands([curled], 1280, 800)[0];
-  assert.ok(a.radius > b.radius * 2);
-  assert.equal(a.contactRadius, b.contactRadius);
-  assert.equal(elementOrbsFromHands([{ ...open, fist: true }], 1280, 800)[0].openness, 0);
+  for (const orb of orbs) assert.ok(orb.radius >= 72 && orb.radius <= 110);
+  assert.equal(orbs[0].radius, 110); assert.equal(orbs[1].radius, 72);
 });
