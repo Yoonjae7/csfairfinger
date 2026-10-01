@@ -37,9 +37,11 @@ function drawOrbits(ctx, geometry, element, time, yaw, tilt, front) {
   ctx.save();
   ctx.lineCap = 'round';
   ctx.shadowColor = element === 'fire' ? '#ff9a55' : '#9cf7ff';
-  ctx.shadowBlur = front ? 14 : 5;
+  ctx.shadowBlur = front ? 6 : 0;
   for (let ring = 0; ring < 2; ring++) {
-    ctx.strokeStyle = element === 'fire'
+    const warm = element === 'fire' || element === 'hybrid' && ring === 0;
+    ctx.shadowColor = warm ? '#ff9a55' : '#9cf7ff';
+    ctx.strokeStyle = warm
       ? front ? '#ffd08bc7' : '#ff81537a'
       : front ? '#c4ffffdb' : '#70d9ef85';
     ctx.lineWidth = front ? 3.5 - ring * .7 : 2.1;
@@ -72,7 +74,7 @@ function drawFirePlumes(ctx, geometry, strength, time, yaw, tilt, front) {
   for (let i = 0; i < count; i++) {
     const base = shellPoint(geometry, i, count, time, yaw, tilt, 1.01);
     if ((base.z >= 0) !== front) continue;
-    const length = (.11 + .13 * (Math.sin(time * (5 + i % 4) + i * 3.4) * .5 + .5)) * (.5 + strength);
+    const length = (.16 + .19 * (Math.sin(time * (5 + i % 4) + i * 3.4) * .5 + .5)) * (.5 + strength);
     const y = 1 - 2 * (i + .5) / count;
     const ringRadius = Math.sqrt(1 - y * y);
     const angle = i * 2.399963 + time * .34;
@@ -82,7 +84,8 @@ function drawFirePlumes(ctx, geometry, strength, time, yaw, tilt, front) {
     const radialLength = Math.max(1, Math.hypot(radialX, radialY));
     const tangentX = -radialY / radialLength;
     const tangentY = radialX / radialLength;
-    const width = (4 + strength * 4) * base.scale;
+    const width = geometry.radius * (.028 + strength * .025) * base.scale;
+    const curl = Math.sin(time * 3 + i * 1.7) * geometry.radius * .07;
     const gradient = ctx.createLinearGradient(base.x, base.y, tip.x, tip.y);
     gradient.addColorStop(0, front ? '#fff2b8e0' : '#ff98587a');
     gradient.addColorStop(.45, front ? '#ff9d4ac0' : '#f85b5370');
@@ -90,8 +93,8 @@ function drawFirePlumes(ctx, geometry, strength, time, yaw, tilt, front) {
     ctx.fillStyle = gradient;
     ctx.beginPath();
     ctx.moveTo(base.x + tangentX * width, base.y + tangentY * width);
-    ctx.quadraticCurveTo(tip.x + tangentX * width * .5, tip.y + tangentY * width * .5, tip.x, tip.y);
-    ctx.quadraticCurveTo(tip.x - tangentX * width * .6, tip.y - tangentY * width * .6, base.x - tangentX * width, base.y - tangentY * width);
+    ctx.bezierCurveTo(base.x + tangentX * (width + curl), base.y + tangentY * (width + curl), tip.x + tangentX * curl, tip.y + tangentY * curl, tip.x, tip.y);
+    ctx.quadraticCurveTo(tip.x - tangentX * (width + curl), tip.y - tangentY * (width + curl), base.x - tangentX * width, base.y - tangentY * width);
     ctx.closePath();
     ctx.fill();
   }
@@ -108,7 +111,7 @@ function drawParticles(ctx, geometry, element, strength, time, yaw, tilt, front)
     ctx.globalAlpha = (front ? .75 : .36) * strength;
     if (element === 'fire') {
       ctx.shadowColor = '#ffbe72';
-      ctx.shadowBlur = front ? 10 : 4;
+      ctx.shadowBlur = 0;
       ctx.fillStyle = i % 5 ? '#ffb76f' : '#fff3c7';
       circle(ctx, p.x, p.y - rise, size);
       ctx.fill();
@@ -125,17 +128,16 @@ function drawParticles(ctx, geometry, element, strength, time, yaw, tilt, front)
   ctx.restore();
 }
 
-function drawSphereGrid(ctx, geometry, element, yaw, tilt) {
+function drawSurfaceFlows(ctx, geometry, element, yaw, tilt, time) {
   ctx.save();
-  ctx.strokeStyle = element === 'fire' ? '#ffd59980' : '#d2ffffa0';
-  ctx.lineWidth = element === 'fire' ? 1.4 : 1.6;
+  ctx.lineCap = 'round';
   ctx.shadowColor = element === 'fire' ? '#ffb36c' : '#9af6ff';
-  ctx.shadowBlur = 6;
+  ctx.shadowBlur = 0;
   function drawLine(pointAt) {
     let drawing = false;
     ctx.beginPath();
-    for (let step = 0; step <= 72; step++) {
-      const p = pointAt(step / 72);
+    for (let step = 0; step <= 56; step++) {
+      const p = pointAt(step / 56);
       if (p.z >= -.025) {
         if (!drawing) ctx.moveTo(p.x, p.y);
         else ctx.lineTo(p.x, p.y);
@@ -144,18 +146,24 @@ function drawSphereGrid(ctx, geometry, element, yaw, tilt) {
     }
     ctx.stroke();
   }
-  for (let i = -3; i <= 3; i++) {
-    const latitude = i * .32;
+  for (let i = 0; i < 12; i++) {
+    const warm = element === 'fire' || element === 'hybrid' && i % 2 === 0;
+    ctx.strokeStyle = warm ? i % 3 ? '#ffc568b0' : '#fff5b3ba' : i % 3 ? '#56d9f2a6' : '#e9ffffc4';
+    ctx.lineWidth = (warm ? 3 : 2) + (i % 3) * 1.5;
     drawLine(t => {
       const longitude = t * TAU;
+      const latitude = -.98 + i * .18 + Math.sin(longitude * (warm ? 3 : 4) + time * (warm ? 2.2 : 1.3) + i * .8) * .055;
       const horizontal = Math.cos(latitude);
       return project(geometry, horizontal * Math.cos(longitude), Math.sin(latitude), horizontal * Math.sin(longitude), yaw, tilt);
     });
   }
-  for (let i = 0; i < 12; i++) {
-    const longitude = i / 12 * TAU;
+  for (let i = 0; i < 5; i++) {
+    const warm = element === 'fire' || element === 'hybrid' && i % 2;
+    ctx.strokeStyle = warm ? '#ffed9d66' : '#e6ffff6b';
+    ctx.lineWidth = warm ? 8 : 4;
     drawLine(t => {
       const latitude = -Math.PI / 2 + t * Math.PI;
+      const longitude = i / 5 * TAU + Math.sin(latitude * 3 + time * .8 + i) * .16 + latitude * (warm ? 1.2 : .7);
       const horizontal = Math.cos(latitude);
       return project(geometry, horizontal * Math.cos(longitude), Math.sin(latitude), horizontal * Math.sin(longitude), yaw, tilt);
     });
@@ -177,17 +185,10 @@ function drawSphereBody(ctx, sourceCanvas, geometry, element, strength, time, ya
   ctx.save();
   circle(ctx, center.x, center.y, radius);
   ctx.clip();
-  ctx.filter = fire ? 'contrast(1.3) saturate(2.1) sepia(.75)' : 'contrast(1.16) saturate(1.65) hue-rotate(9deg)';
-  const top = Math.max(0, Math.floor((center.y - radius) / 30) * 30);
-  const bottom = Math.min(HEIGHT, center.y + radius);
-  for (let y = top; y < bottom; y += 30) {
-    const height = Math.min(30, HEIGHT - y);
-    const relativeY = (y - center.y) / radius;
-    const bulge = 1 + .12 * (1 - relativeY * relativeY);
-    const shimmer = Math.sin(y * (fire ? .065 : .042) + time * (fire ? 6 : 2.8)) * (fire ? 5 : 9) * strength;
-    ctx.drawImage(sourceCanvas, 0, y, WIDTH, height, (WIDTH - WIDTH * bulge) / 2 + shimmer, y, WIDTH * bulge, height);
-  }
-  ctx.filter = 'none';
+  ctx.globalAlpha = .1;
+  const shimmer = Math.sin(time * (fire ? 4 : 1.6)) * 5 * strength;
+  ctx.drawImage(sourceCanvas, shimmer, 0, WIDTH, HEIGHT);
+  ctx.globalAlpha = 1;
   const volume = ctx.createRadialGradient(center.x - radius * .35, center.y - radius * .4, radius * .04, center.x, center.y, radius * 1.17);
   if (fire) {
     volume.addColorStop(0, '#fff4b197');
@@ -204,7 +205,24 @@ function drawSphereBody(ctx, sourceCanvas, geometry, element, strength, time, ya
   ctx.fillStyle = volume;
   ctx.fillRect(center.x - radius, center.y - radius, radius * 2, radius * 2);
   ctx.globalAlpha = 1;
-  drawSphereGrid(ctx, geometry, element, yaw, tilt);
+  if (element === 'hybrid') {
+    const dual = ctx.createLinearGradient(center.x - radius, center.y, center.x + radius, center.y);
+    dual.addColorStop(0, '#ff8f3eaa'); dual.addColorStop(.46, '#ffca6c45');
+    dual.addColorStop(.56, '#a3ffff45'); dual.addColorStop(1, '#24bde6aa');
+    ctx.fillStyle = dual; ctx.fillRect(center.x - radius, center.y - radius, radius * 2, radius * 2);
+  }
+  for (let i = 0; i < 12; i++) {
+    const p = shellPoint(geometry, i, 12, time * .7, yaw, tilt, .94);
+    if (p.z < 0) continue;
+    const warm = fire || element === 'hybrid' && i % 2 === 0;
+    const size = radius * (.16 + (i % 3) * .04);
+    const cloud = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size);
+    cloud.addColorStop(0, warm ? '#ffdb8390' : '#d4ffff7a');
+    cloud.addColorStop(.4, warm ? '#ff973f50' : '#52d3ee50');
+    cloud.addColorStop(1, '#ffffff00');
+    ctx.fillStyle = cloud; circle(ctx, p.x, p.y, size); ctx.fill();
+  }
+  drawSurfaceFlows(ctx, geometry, element, yaw, tilt, time);
 
   const reflection = ctx.createRadialGradient(center.x - radius * .45, center.y - radius * .56, 0, center.x - radius * .3, center.y - radius * .42, radius * .7);
   reflection.addColorStop(0, fire ? '#fff9c681' : '#ffffffb5');
@@ -233,10 +251,138 @@ export function drawElement(ctx, sourceCanvas, geometry, element, strength, time
   const yaw = time * (element === 'fire' ? .62 : .4);
   const tilt = geometry.tilt + Math.sin(time * .38) * .08;
   drawOrbits(ctx, geometry, element, time, yaw, tilt, false);
-  if (element === 'fire') drawFirePlumes(ctx, geometry, strength, time, yaw, tilt, false);
+  if (element !== 'water') drawFirePlumes(ctx, geometry, strength, time, yaw, tilt, false);
   drawParticles(ctx, geometry, element, strength, time, yaw, tilt, false);
+  if (element === 'water' && geometry.enhanced) drawWaterCrest(ctx, geometry, time, yaw, tilt, false);
   drawSphereBody(ctx, sourceCanvas, geometry, element, strength, time, yaw, tilt);
   drawOrbits(ctx, geometry, element, time, yaw, tilt, true);
-  if (element === 'fire') drawFirePlumes(ctx, geometry, strength, time, yaw, tilt, true);
+  if (element !== 'water') drawFirePlumes(ctx, geometry, strength, time, yaw, tilt, true);
   drawParticles(ctx, geometry, element, strength, time, yaw, tilt, true);
+  if (element === 'water' && geometry.enhanced) drawWaterCrest(ctx, geometry, time, yaw, tilt, true);
+  if (element === 'hybrid') {
+    drawParticles(ctx, geometry, 'fire', strength, time, yaw, tilt, true);
+    drawSteam(ctx, geometry, time, strength);
+  }
+}
+
+function drawWaterCrest(ctx, geometry, time, yaw, tilt, front) {
+  ctx.save();
+  const edge = angle => {
+    const y = Math.sin(angle * 5 + time * 2) * .11 - .12;
+    return [project(geometry, Math.cos(angle) * 1.1, y, Math.sin(angle) * 1.1, yaw, tilt),
+      project(geometry, Math.cos(angle) * 1.06, y + .14, Math.sin(angle) * 1.06, yaw, tilt)];
+  };
+  ctx.fillStyle = front ? '#74e7f174' : '#4ac9e547';
+  ctx.strokeStyle = front ? '#e5ffffdc' : '#a4ffff60'; ctx.lineWidth = 2.5;
+  for (let i = 0; i < 64; i++) {
+    const [a, b] = edge(i / 64 * TAU);
+    const [d, c] = edge((i + 1) / 64 * TAU);
+    if (((a.z + d.z) / 2 >= 0) !== front) continue;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(d.x, d.y); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawSteam(ctx, geometry, time, strength) {
+  ctx.save();
+  for (let i = 0; i < 10; i++) {
+    const life = (time * .22 + i / 10) % 1;
+    const x = geometry.center.x + Math.sin(i * 3.7 + time * .5) * geometry.radius * .65;
+    const y = geometry.center.y - geometry.radius * .55 - life * geometry.radius;
+    const size = geometry.radius * (.08 + life * .15);
+    const fog = ctx.createRadialGradient(x, y, 0, x, y, size);
+    fog.addColorStop(0, `rgba(234,251,255,${(1 - life) * .17 * strength})`);
+    fog.addColorStop(1, '#edffff00');
+    ctx.fillStyle = fog; circle(ctx, x, y, size); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawFusionBurst(ctx, geometry, strength) {
+  const { center, radius, kind, age } = geometry;
+  const initial = age < 1.8;
+  const life = initial ? age / 1.8 : ((age - 1.8) % 3.8) / 3.8;
+  const intensity = initial ? 1 : kind === 'fire' ? .34 : .12;
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  for (let i = 0; i < 68; i++) {
+    const angle = i * 2.399963;
+    const reach = radius * (1 + life * (1.1 + (i % 5) * .12));
+    const x = center.x + Math.cos(angle) * reach;
+    const y = center.y + Math.sin(angle) * reach * .85 + life * life * radius * .5;
+    const warm = kind === 'fire' || kind === 'hybrid' && i % 2 === 0;
+    const size = (2 + i % 5) * (1 - life) * strength * (initial ? 1.7 : 1);
+    ctx.globalAlpha = (1 - life) ** 2 * intensity;
+    ctx.strokeStyle = warm ? '#ffbf69' : '#c0fbff';
+    ctx.fillStyle = warm ? '#ffe4a2' : '#9cecff';
+    ctx.lineWidth = Math.max(1, size);
+    ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.moveTo(x, y);
+    ctx.lineTo(x - Math.cos(angle) * radius * .13 * (1 - life), y - Math.sin(angle) * radius * .13 * (1 - life)); ctx.stroke();
+    circle(ctx, x, y, Math.max(.4, size)); ctx.fill();
+  }
+  if (initial) {
+    ctx.globalAlpha = (1 - life) * .45;
+    ctx.strokeStyle = kind === 'fire' ? '#ffd6a0' : '#c6ffff'; ctx.lineWidth = 5 * (1 - life) + 1;
+    circle(ctx, center.x, center.y, radius * (1 + life * .9)); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawMixing(ctx, sourceCanvas, fusion, strength, time, includeUI) {
+  const { center, progress } = fusion;
+  const spin = time * (1.5 + progress * 3);
+  const orbit = 65 * (1 - progress) + 18;
+  const mixing = fusion.orbs.map((orb, i) => {
+    const angle = spin + i * Math.PI;
+    const target = { x: center.x + Math.cos(angle) * orbit, y: center.y + Math.sin(angle) * orbit * .44 };
+    return { ...orb, depth: Math.sin(angle), center: {
+      x: orb.center.x + (target.x - orb.center.x) * progress,
+      y: orb.center.y + (target.y - orb.center.y) * progress,
+    }, radius: orb.radius * (1 - progress * .15) };
+  }).sort((a, b) => a.depth - b.depth);
+  ctx.save();
+  for (const orb of mixing) {
+    const gradient = ctx.createLinearGradient(orb.center.x, orb.center.y, center.x, center.y);
+    gradient.addColorStop(0, orb.element === 'fire' ? '#ffad68' : '#a6f5ff');
+    gradient.addColorStop(1, '#fff5d499');
+    ctx.strokeStyle = gradient; ctx.lineWidth = 5 + progress * 13;
+    ctx.shadowColor = orb.element === 'fire' ? '#ff883e' : '#63dfff'; ctx.shadowBlur = 20;
+    ctx.beginPath(); ctx.moveTo(orb.center.x, orb.center.y);
+    ctx.bezierCurveTo(orb.center.x + Math.sin(spin) * 60, orb.center.y - 65, center.x - Math.sin(spin) * 60, center.y + 60, center.x, center.y); ctx.stroke();
+  }
+  ctx.restore();
+  for (const orb of mixing) drawElement(ctx, sourceCanvas, orb, orb.element, strength, time + (orb.slot === 'left' ? 0 : 1.2));
+  if (includeUI) {
+    ctx.save(); ctx.strokeStyle = '#ffffffb3'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(center.x, center.y, 132, -Math.PI / 2, -Math.PI / 2 + progress * TAU); ctx.stroke(); ctx.restore();
+  }
+}
+
+export function drawElementalScene(ctx, sourceCanvas, fusion, strength, time, includeUI = true, reducedMotion = false) {
+  if (fusion.phase === 'fused' && fusion.fused) {
+    const fused = { ...fusion.fused, enhanced: true, age: reducedMotion ? 2 : fusion.fused.age };
+    const bounce = 1 + Math.sin(fused.age * 10) * Math.exp(-fused.age * 2.5) * .12;
+    fused.radius *= bounce;
+    drawElement(ctx, sourceCanvas, fused, fused.kind, strength, time);
+    drawFusionBurst(ctx, fused, strength);
+    if (fused.kind === 'water') {
+      drawParticles(ctx, { ...fused, radius: fused.radius * 1.18 }, 'water', strength, time * .8, time * .3, .6, true);
+    }
+    return;
+  }
+  if (fusion.phase === 'mixing' && fusion.orbs.length === 2) {
+    drawMixing(ctx, sourceCanvas, fusion, strength, time, includeUI);
+    return;
+  }
+  for (const orb of fusion.orbs) {
+    drawElement(ctx, sourceCanvas, orb, orb.element, strength, time + (orb.slot === 'left' ? 0 : 1.2));
+    if (includeUI) {
+      ctx.save(); ctx.font = '600 14px DM Sans'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = '#171827'; ctx.shadowBlur = 6;
+      ctx.fillText(`${orb.slot.toUpperCase()} · ${orb.element.toUpperCase()}`, orb.center.x, orb.center.y + orb.radius + 32);
+      ctx.restore();
+    }
+  }
 }

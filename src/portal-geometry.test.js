@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { elementalFromHands, portalFromHands } from './portal-geometry.js';
+import { elementOrbsFromHands, portalFromHands } from './portal-geometry.js';
 
 function hand(x, rotated = false) {
   const landmarks = Array.from({ length: 21 }, () => ({ x, y: .5 }));
@@ -33,13 +33,14 @@ test('the portal is absent when no hands are tracked', () => {
   assert.equal(portalFromHands([], '3d', 1280, 800), null);
 });
 
-test('3D elements follow one or two hands and grow into a larger orb', () => {
-  assert.equal(elementalFromHands([], 1280, 800), null);
-  const single = elementalFromHands([hand(.3)], 1280, 800);
-  const dual = elementalFromHands([hand(.3), hand(.7)], 1280, 800);
-  assert.equal(single.variant, 'single');
-  assert.equal(dual.variant, 'dual');
-  assert.ok(dual.radius > single.radius);
-  assert.ok(Math.abs(dual.center.x - 640) < 30);
-  assert.equal(dual.tilt, 0);
+test('each 3D element follows its hand and stays bounded at extreme hand sizes', () => {
+  assert.deepEqual(elementOrbsFromHands([], 1280, 800), []);
+  const left = { ...hand(.3), slot: 'left' };
+  const right = { ...hand(.7), slot: 'right' };
+  left.landmarks[5] = { x: 0, y: .5 }; left.landmarks[17] = { x: 1, y: .5 };
+  const orbs = elementOrbsFromHands([left, right], 1280, 800);
+  assert.deepEqual(orbs.map(orb => orb.slot), ['left', 'right']);
+  assert.ok(orbs[0].center.x < orbs[1].center.x);
+  for (const orb of orbs) assert.ok(orb.radius >= 72 && orb.radius <= 110);
+  assert.equal(orbs[0].radius, 110); assert.equal(orbs[1].radius, 72);
 });

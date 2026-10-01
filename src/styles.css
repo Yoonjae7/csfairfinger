@@ -46,3 +46,30 @@
 @media(max-width:950px){.element-section{grid-column:2;grid-row:2/4}}
 @media(max-width:680px){.element-section{grid-column:auto;grid-row:auto}}
 @media(prefers-reduced-motion:reduce){.element-button{transition:none}.fire-preview i,.water-preview i{animation:none}}
+
+.hand-element-card{border:1px solid #ccc4d5;padding:9px;margin-bottom:10px;background:#faf8f4}
+.hand-element-heading{display:flex;justify-content:space-between;margin:0 0 8px;font:10px var(--pixel);letter-spacing:1px;color:var(--purple)}
+.hand-element-heading strong{font-weight:500;color:var(--ink)}
+.hand-element-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hand-element-options .element-button{min-height:75px;flex-direction:column;gap:6px;padding:6px;align-items:center;text-align:center}
+.hand-element-options .element-preview{width:100%;height:35px}
+.hand-element-options .element-copy{flex:none}
+.hand-element-options .element-copy strong{font-size:14px}
+.fusion-instructions{display:flex;gap:10px;align-items:center;background:linear-gradient(120deg,#fff0de,#e2f5fa);border:1px solid #d4c4ca;padding:10px}
+.fusion-instructions>span{font:30px var(--pixel);color:#b691a5}
+.fusion-instructions p{font-size:10px;line-height:1.55;margin:0;color:#696478}
+.element-utilities{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px}
+.element-utilities [hidden]{display:none}
+.fusion-hud{position:absolute;top:76px;left:50%;transform:translateX(-50%);width:min(330px,calc(100% - 100px));padding:12px 16px;border:1px solid #e4e8f48c;background:#18233bde;backdrop-filter:blur(14px);box-shadow:0 6px 30px #101b3b42;color:#f1ffff;pointer-events:none}
+.fusion-hud[hidden]{display:none}
+.fusion-kicker{display:block;font:9px var(--body);letter-spacing:2px;color:#c6c7dd;margin-bottom:5px}
+.fusion-hud strong{display:block;font:19px var(--pixel);letter-spacing:.4px}
+.fusion-hud.fused{background:linear-gradient(110deg,#543330df,#193c56e8);border-color:#e9ddc8}
+#fusion-meter{display:flex;align-items:center;gap:12px;margin-top:10px}
+#fusion-meter[hidden]{display:none}
+#fusion-progress{appearance:none;width:100%;height:5px;border:0;background:#ffffff26}
+#fusion-progress::-webkit-progress-bar{background:#ffffff26}
+#fusion-progress::-webkit-progress-value{background:linear-gradient(90deg,#ffad5e,#c4ffff,#6fceeb)}
+#fusion-progress::-moz-progress-bar{background:linear-gradient(90deg,#ffad5e,#c4ffff,#6fceeb)}
+#fusion-seconds{font:16px var(--pixel);min-width:38px}
+@media(max-width:680px){.fusion-hud{top:49px;padding:8px 11px;width:calc(100% - 76px)}.fusion-hud strong{font-size:14px}.fusion-kicker{font-size:7px}}

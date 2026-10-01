@@ -1,6 +1,7 @@
 import './styles.css';
 import { createScene } from './scene.js';
 import { analyzeHand, createGestureController } from './gestures.js';
+import { fusionName } from './element-fusion.js';
 
 const $ = selector => document.querySelector(selector);
 const canvas = $('#scene');
@@ -15,10 +16,11 @@ const filterButtons = [...document.querySelectorAll('[data-filter]')];
 const elementButtons = [...document.querySelectorAll('[data-element]')];
 const modeButtons = [...document.querySelectorAll('[data-mode]')];
 const filterNames = filterButtons.map(button => button.dataset.filter);
-const elementNames = elementButtons.map(button => button.dataset.element);
+const elementNames = [...new Set(elementButtons.map(button => button.dataset.element))];
 const modeNames = modeButtons.map(button => button.dataset.mode);
 const modeLabels = { '2d': '2D portal', '3d': '3D mesh', elemental: '3D elements' };
 const gestureController = createGestureController();
+const handGestures = { left: createGestureController(), right: createGestureController() };
 let stream = null;
 let landmarker = null;
 let trackingLoopActive = false;
@@ -54,7 +56,9 @@ function stopCamera() {
   video.srcObject = null;
   trackingLoopActive = false;
   scene.setHands([]);
+  scene.resetSession();
   gestureController.reset();
+  Object.values(handGestures).forEach(controller => controller.reset());
   handCount = 0;
   updateCaptureAvailability();
 }
@@ -96,20 +100,29 @@ function processHands(result) {
   const scale = Math.max(1280 / video.videoWidth, 800 / video.videoHeight);
   const drawWidth = video.videoWidth * scale;
   const drawHeight = video.videoHeight * scale;
-  const hands = (result.landmarks || []).map(raw => {
+  const detected = (result.landmarks || []).map((raw, index) => {
     const landmarks = raw.map(p => ({
       x: ((1 - p.x) * drawWidth + (1280 - drawWidth) / 2) / 1280,
       y: (p.y * drawHeight + (800 - drawHeight) / 2) / 800,
     }));
-    return analyzeHand(landmarks);
+    return { ...analyzeHand(landmarks), handedness: result.handedness?.[index]?.[0]?.categoryName };
   });
+  const hands = scene.setHands(detected);
   const gesture = gestureController.update(hands, performance.now());
-  scene.setHands(hands);
   handCount = hands.length;
   updateCaptureAvailability();
   if (gesture.toggleMode) {
     selectMode(modeNames[(modeNames.indexOf(scene.state.mode) + 1) % modeNames.length]);
     setHint(`Mode switched to ${modeLabels[scene.state.mode]}. Spread your hands again to reshape it.`);
+  } else if (scene.state.mode === 'elemental') {
+    for (const slot of ['left', 'right']) {
+      const hand = hands.find(candidate => candidate.slot === slot);
+      const local = handGestures[slot].update(gesture.dualFist || !hand ? [] : [hand], performance.now());
+      if (local.nextFilter) {
+        selectElement(scene.state.elements[slot] === 'fire' ? 'water' : 'fire', slot);
+        setHint(`${slot === 'left' ? 'Left' : 'Right'} hand element changed. Bring both orbs together and hold for five seconds to forge them.`);
+      }
+    }
   } else if (gesture.nextFilter) {
     cycleLook(1);
     setHint(`${scene.state.mode === 'elemental' ? 'Element' : 'Look'} changed. Release your thumb and pinky, then touch them again to change it once more.`);
@@ -175,6 +188,7 @@ async function openCamera() {
 }
 
 function selectMode(mode) {
+  if (scene.state.mode !== mode) Object.values(handGestures).forEach(controller => controller.reset());
   scene.setMode(mode);
   modeButtons.forEach(button => {
     const active = button.dataset.mode === mode;
@@ -197,25 +211,27 @@ function selectFilter(name) {
   updateEffectLabel();
 }
 
-function selectElement(name) {
-  scene.setElement(name);
+function selectElement(name, slot) {
+  scene.setElement(name, slot);
   elementButtons.forEach(button => {
-    const active = button.dataset.element === name;
+    const active = button.dataset.element === scene.state.elements[button.dataset.hand];
     button.classList.toggle('active', active);
     button.setAttribute('aria-pressed', String(active));
   });
-  $('#element-count').textContent = `${String(elementNames.indexOf(name) + 1).padStart(2, '0')} / 02`;
+  for (const hand of ['left', 'right']) $(`#${hand}-element-name`).textContent = scene.state.elements[hand].toUpperCase();
   updateEffectLabel();
 }
 
 function updateEffectLabel() {
-  const look = scene.state.mode === 'elemental' ? scene.state.element : scene.state.filter;
+  const look = scene.state.mode === 'elemental'
+    ? scene.state.fusion.fused ? fusionName(scene.state.fusion.fused.kind) : `${scene.state.elements.left} + ${scene.state.elements.right}`
+    : scene.state.filter;
   $('#effect-label').textContent = `◌  ${modeLabels[scene.state.mode].toUpperCase()} / ${look.toUpperCase()}`;
 }
 
 function cycleLook(direction) {
   if (scene.state.mode === 'elemental') {
-    selectElement(elementNames[(elementNames.indexOf(scene.state.element) + direction + elementNames.length) % elementNames.length]);
+    for (const slot of ['left', 'right']) selectElement(elementNames[(elementNames.indexOf(scene.state.elements[slot]) + direction + elementNames.length) % elementNames.length], slot);
   } else {
     selectFilter(filterNames[(filterNames.indexOf(scene.state.filter) + direction + filterNames.length) % filterNames.length]);
   }
@@ -251,7 +267,12 @@ $('#end-session').addEventListener('click', () => endSession());
 $('#capture').addEventListener('click', capture);
 modeButtons.forEach(button => button.addEventListener('click', () => selectMode(button.dataset.mode)));
 filterButtons.forEach(button => button.addEventListener('click', () => selectFilter(button.dataset.filter)));
-elementButtons.forEach(button => button.addEventListener('click', () => selectElement(button.dataset.element)));
+elementButtons.forEach(button => button.addEventListener('click', () => selectElement(button.dataset.element, button.dataset.hand)));
+$('#swap-elements').addEventListener('click', () => {
+  const { left, right } = scene.state.elements;
+  selectElement(right, 'left'); selectElement(left, 'right');
+});
+$('#split-elements').addEventListener('click', () => scene.resetFusion(true));
 $('#strength').addEventListener('input', event => {
   const value = Number(event.target.value);
   scene.setStrength(value / 100);
@@ -267,10 +288,28 @@ document.addEventListener('keydown', event => {
 });
 
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { handCount = 0; updateCaptureAvailability(); }
+  if (document.hidden) { handCount = 0; scene.setHands([]); scene.resetFusion(); updateCaptureAvailability(); }
 });
 window.addEventListener('pagehide', stopCamera);
 
 selectMode(scene.state.mode);
 selectFilter(scene.state.filter);
-selectElement(scene.state.element);
+selectElement(scene.state.elements.left, 'left');
+selectElement(scene.state.elements.right, 'right');
+scene.onFusionChange(fusion => {
+  const active = scene.state.mode === 'elemental';
+  $('#fusion-hud').hidden = !active || fusion.phase === 'idle' || fusion.orbs.length === 0;
+  $('#split-elements').hidden = fusion.phase === 'idle';
+  const kind = scene.state.elements.left === scene.state.elements.right ? scene.state.elements.left : 'hybrid';
+  const name = fusionName(kind);
+  $('#fusion-status').textContent = fusion.phase === 'fused' ? `${name} forged! Pull your hands apart to split it.`
+    : fusion.phase === 'mixing' ? `Forging ${name}… Keep both hands close.`
+    : `${scene.state.elements.left === 'fire' ? 'Fire' : 'Water'} + ${scene.state.elements.right === 'fire' ? 'Fire' : 'Water'} → ${name}. Start with hands apart.`;
+  const title = fusion.phase === 'fused' ? `${name.toUpperCase()} FORGED` : `FORGING ${name.toUpperCase()}`;
+  if ($('#fusion-title').textContent !== title) $('#fusion-title').textContent = title;
+  $('#fusion-meter').hidden = fusion.phase === 'fused';
+  $('#fusion-progress').value = fusion.progress * 5;
+  $('#fusion-seconds').textContent = `${(5 - fusion.progress * 5).toFixed(1)}s`;
+  $('#fusion-hud').classList.toggle('fused', fusion.phase === 'fused');
+  updateEffectLabel();
+});

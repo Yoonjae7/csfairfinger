@@ -46,6 +46,10 @@
                 <p>Spread your hands to open the portal. Your photo stays on this device.</p>
                 <div class="welcome-actions"><button id="open-camera" class="button mint" type="button">Open the camera <span>↗</span></button></div>
               </div>
+              <div id="fusion-hud" class="fusion-hud" hidden>
+                <span class="fusion-kicker">ELEMENT FORGE</span><strong id="fusion-title" role="status">Forging</strong>
+                <div id="fusion-meter"><progress id="fusion-progress" max="5" value="0" aria-label="Five-second fusion progress"></progress><span id="fusion-seconds" aria-hidden="true">5.0s</span></div>
+              </div>
               <div id="flash" class="flash" aria-hidden="true"></div>
               <div class="stage-bottom" aria-hidden="true"><span id="effect-label">◌ &nbsp; 3D MESH / PRISM</span><span>NO. 001 / 001</span></div>
             </div>
@@ -59,11 +63,31 @@
           <div class="panel-head"><div><span class="panel-overline">YOUR WORKSPACE</span><h2>Control<br />the chaos<span>.</span></h2></div><span class="panel-star" aria-hidden="true">✳</span></div>
           <div class="instruction"><span class="instruction-number">01 / THE GESTURE</span><div class="gesture-icons"><span class="gesture-glyph" aria-hidden="true">◇</span><span class="gesture-arrow" aria-hidden="true">⟷</span><span class="gesture-glyph" aria-hidden="true">◇</span></div><div class="gesture-list"><p><strong>Spread two hands</strong> to open the effect.</p><p><strong>Thumb + pinky</strong> to change the look or element.</p><p><strong>Close both fists</strong> to switch dimensions.</p></div></div>
 
-          <div class="control-section"><div class="control-label"><span>02 / PICK A DIMENSION</span><span class="tiny-asterisk">✳</span></div><div class="mode-options" role="group" aria-label="Portal dimension"><button class="mode-button" data-mode="2d" type="button" aria-pressed="false"><span class="mode-icon">▱</span><span>2D portal<small>Quad or bowtie</small></span></button><button class="mode-button active" data-mode="3d" type="button" aria-pressed="true"><span class="mode-icon">⬡</span><span>3D mesh<small>Two filtered bands</small></span></button><button class="mode-button elemental-mode" data-mode="elemental" type="button" aria-pressed="false"><span class="mode-icon">✳</span><span>3D elements<small>Rotating fire and water orbs</small></span><span class="mode-arrow" aria-hidden="true">↗</span></button></div></div>
+          <div class="control-section"><div class="control-label"><span>02 / PICK A DIMENSION</span><span class="tiny-asterisk">✳</span></div><div class="mode-options" role="group" aria-label="Portal dimension"><button class="mode-button" data-mode="2d" type="button" aria-pressed="false"><span class="mode-icon">▱</span><span>2D portal<small>Quad or bowtie</small></span></button><button class="mode-button active" data-mode="3d" type="button" aria-pressed="true"><span class="mode-icon">⬡</span><span>3D mesh<small>Two filtered bands</small></span></button><button class="mode-button elemental-mode" data-mode="elemental" type="button" aria-pressed="false"><span class="mode-icon">✳</span><span>3D elements<small>Hold elements · forge them together</small></span><span class="mode-arrow" aria-hidden="true">↗</span></button></div></div>
 
           <div class="control-section filter-section" id="filter-section"><div class="control-label"><span>03 / CHOOSE A LOOK</span><span id="filter-count">01 / 06</span></div><div class="filter-grid" role="group" aria-label="Camera filters"><button class="filter-button active" type="button" data-filter="prism" aria-pressed="true"><span class="filter-swatch prism-swatch"></span><span>Prism</span></button><button class="filter-button" type="button" data-filter="thermal"><span class="filter-swatch thermal-swatch"></span><span>Thermal</span></button><button class="filter-button" type="button" data-filter="pixel"><span class="filter-swatch pixel-swatch"></span><span>Pixel</span></button><button class="filter-button" type="button" data-filter="mono"><span class="filter-swatch mono-swatch"></span><span>Mono</span></button><button class="filter-button" type="button" data-filter="rgb"><span class="filter-swatch rgb-swatch"></span><span>RGB split</span></button><button class="filter-button" type="button" data-filter="dream"><span class="filter-swatch dream-swatch"></span><span>Dream</span></button></div></div>
 
-          <div class="control-section element-section" id="element-section" hidden><div class="control-label"><span>03 / CHOOSE AN ELEMENT</span><span id="element-count">01 / 02</span></div><div class="element-options" role="group" aria-label="Elemental effects"><button class="element-button fire-button active" type="button" data-element="fire" aria-pressed="true"><span class="element-preview fire-preview" aria-hidden="true"><i></i><i></i><i></i></span><span class="element-copy"><strong>Fire</strong><small>Heat haze · embers · flame</small></span><span class="element-arrow" aria-hidden="true">↗</span></button><button class="element-button water-button" type="button" data-element="water" aria-pressed="false"><span class="element-preview water-preview" aria-hidden="true"><i></i><i></i><i></i></span><span class="element-copy"><strong>Water</strong><small>Refraction · bubbles · flow</small></span><span class="element-arrow" aria-hidden="true">↗</span></button></div><p class="element-note">Your hands move and tilt the 3D orb. One hand makes it small; two hands grow it.</p></div>
+          <div class="control-section element-section" id="element-section" hidden>
+            <div class="control-label"><span>03 / ELEMENTS IN YOUR HANDS</span><span>2 HANDS</span></div>
+            <div class="hand-element-card" data-slot="left">
+              <div class="hand-element-heading"><span>LEFT HAND</span><strong id="left-element-name">FIRE</strong></div>
+              <div class="hand-element-options" role="group" aria-label="Left hand element">
+                <button class="element-button fire-button active" type="button" data-element="fire" data-hand="left" aria-pressed="true"><span class="element-preview fire-preview" aria-hidden="true"><i></i><i></i><i></i></span><span class="element-copy"><strong>Fire</strong></span></button>
+                <button class="element-button water-button" type="button" data-element="water" data-hand="left" aria-pressed="false"><span class="element-preview water-preview" aria-hidden="true"><i></i><i></i><i></i></span><span class="element-copy"><strong>Water</strong></span></button>
+              </div>
+            </div>
+            <div class="hand-element-card" data-slot="right">
+              <div class="hand-element-heading"><span>RIGHT HAND</span><strong id="right-element-name">WATER</strong></div>
+              <div class="hand-element-options" role="group" aria-label="Right hand element">
+                <button class="element-button fire-button" type="button" data-element="fire" data-hand="right" aria-pressed="false"><span class="element-preview fire-preview" aria-hidden="true"><i></i><i></i><i></i></span><span class="element-copy"><strong>Fire</strong></span></button>
+                <button class="element-button water-button active" type="button" data-element="water" data-hand="right" aria-pressed="true"><span class="element-preview water-preview" aria-hidden="true"><i></i><i></i><i></i></span><span class="element-copy"><strong>Water</strong></span></button>
+              </div>
+            </div>
+            <div class="fusion-instructions"><span aria-hidden="true">✳</span><p>Bring the orbs together and hold for <strong>5 seconds</strong> to forge a larger element. Pull your hands apart to split it.</p></div>
+            <p id="fusion-status" class="element-note">Fire + Water → Steamfire. Start with hands apart.</p>
+            <div class="element-utilities"><button id="swap-elements" class="text-link" type="button">Swap elements ⇄</button><button id="split-elements" class="text-link" type="button" hidden>Split orbs ↺</button></div>
+            <p class="element-note">Left and right follow your first positions in the mirrored view. Pinch thumb + pinky on either hand to change its element.</p>
+          </div>
 
           <div class="control-section strength-section"><div class="control-label"><label for="strength">04 / TURN IT UP</label><output id="strength-value" for="strength">72%</output></div><input id="strength" type="range" min="20" max="100" value="72" aria-label="Effect strength" /><div class="range-labels"><span>SOFT</span><span>LOUD</span></div></div>
 

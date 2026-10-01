@@ -1,5 +1,7 @@
-import { elementalFromHands, portalFromHands } from './portal-geometry.js';
-import { drawElement } from './elements.js';
+import { portalFromHands } from './portal-geometry.js';
+import { drawElementalScene } from './elements.js';
+import { createElementFusion } from './element-fusion.js';
+import { createHandSlots } from './hand-slots.js';
 
 const WIDTH = 1280;
 const HEIGHT = 800;
@@ -17,11 +19,17 @@ export function createScene(canvas) {
   pixelCanvas.height = 60;
   const pixelCtx = pixelCanvas.getContext('2d');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const fusion = createElementFusion();
+  const handSlots = createHandSlots();
+  let fusionListener = null;
+  let fusionSignature = '';
   const state = {
     source: null,
     mode: '3d',
     filter: 'prism',
-    element: 'fire',
+    elements: { left: 'fire', right: 'water' },
+    fusion: fusion.state,
+    renderTime: 0,
     strength: 0.72,
     hands: [],
     lastHandUpdate: 0,
@@ -144,9 +152,8 @@ export function createScene(canvas) {
     if (!state.hands.length || performance.now() - state.lastHandUpdate > 500) return;
     for (const hand of state.hands) {
       c.save();
-      const elementColor = state.element === 'fire' ? '#ffd09c' : '#b3f4ff';
-      c.strokeStyle = state.mode === 'elemental' ? `${elementColor}a8` : hand.thumbPinkyPinch ? '#d4ffdcdb' : '#e9e3ff99';
-      c.fillStyle = state.mode === 'elemental' ? elementColor : hand.thumbPinkyPinch ? '#c5ffd1' : '#e9e3ff';
+      c.strokeStyle = hand.thumbPinkyPinch ? '#d4ffdcdb' : '#e9e3ff99';
+      c.fillStyle = hand.thumbPinkyPinch ? '#c5ffd1' : '#e9e3ff';
       c.lineWidth = 2;
       for (const [from, to] of [[0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8], [0, 9], [9, 10], [10, 11], [11, 12], [0, 13], [13, 14], [14, 15], [15, 16], [0, 17], [17, 18], [18, 19], [19, 20]]) {
         const p = hand.landmarks[from], q = hand.landmarks[to];
@@ -160,6 +167,8 @@ export function createScene(canvas) {
   }
 
   function render(c = ctx, includeUI = true) {
+    const now = performance.now();
+    if (includeUI) state.renderTime = reducedMotion.matches ? 0 : now / 1000;
     updateSource();
     c.clearRect(0, 0, WIDTH, HEIGHT);
     c.drawImage(sourceCanvas, 0, 0);
@@ -168,35 +177,53 @@ export function createScene(canvas) {
     }
     const liveHands = performance.now() - state.lastHandUpdate < 500 ? state.hands : [];
     if (state.mode === 'elemental') {
-      drawElement(c, sourceCanvas, elementalFromHands(liveHands, WIDTH, HEIGHT), state.element, state.strength, reducedMotion.matches ? 0 : performance.now() / 1000);
+      if (includeUI) {
+        const freshHands = !document.hidden && now - state.lastHandUpdate < 250 ? state.hands : [];
+        state.fusion = fusion.update(freshHands, state.elements, now);
+        emitFusion();
+      }
+      drawElementalScene(c, sourceCanvas, state.fusion, state.strength, state.renderTime, includeUI, reducedMotion.matches);
     } else {
       drawPortal(c, liveHands);
     }
-    if (includeUI) drawHands(c);
+    if (includeUI && state.mode !== 'elemental') drawHands(c);
   }
 
   function frame() { render(); requestAnimationFrame(frame); }
   requestAnimationFrame(frame);
 
   function setHands(hands) {
-    const ordered = [...hands].sort((a, b) => a.landmarks[0].x - b.landmarks[0].x);
+    const ordered = handSlots.assign(hands, performance.now());
     const previous = state.hands;
-    state.hands = ordered.map((hand, index) => ({
-      ...hand,
-      landmarks: previous.length === ordered.length
-        ? hand.landmarks.map((p, i) => point(previous[index].landmarks[i].x + (p.x - previous[index].landmarks[i].x) * .42, previous[index].landmarks[i].y + (p.y - previous[index].landmarks[i].y) * .42))
-        : hand.landmarks,
-    }));
+    state.hands = ordered.map(hand => {
+      const old = previous.find(candidate => candidate.slot === hand.slot);
+      return { ...hand, landmarks: old
+        ? hand.landmarks.map((p, i) => point(old.landmarks[i].x + (p.x - old.landmarks[i].x) * .42, old.landmarks[i].y + (p.y - old.landmarks[i].y) * .42))
+        : hand.landmarks };
+    });
     state.lastHandUpdate = performance.now();
+    return state.hands;
+  }
+
+  function emitFusion() {
+    const signature = `${state.mode}:${state.elements.left}:${state.elements.right}:${state.fusion.phase}:${Math.floor(state.fusion.progress * 50)}:${state.fusion.orbs.length}:${state.fusion.fused?.kind}`;
+    if (signature !== fusionSignature) { fusionSignature = signature; fusionListener?.(state.fusion); }
+  }
+
+  function resetFusion(waitForSeparation = false) {
+    fusion.reset(waitForSeparation); state.fusion = fusion.state; emitFusion();
   }
 
   return {
     state,
     setSource(source) { state.source = source; },
     setHands,
-    setMode(mode) { state.mode = mode; },
+    setMode(mode) { if (state.mode !== mode) { state.mode = mode; resetFusion(); } },
     setFilter(filter) { state.filter = filter; },
-    setElement(element) { state.element = element; },
+    setElement(element, slot) { if (state.elements[slot] !== element) { state.elements[slot] = element; resetFusion(); } },
+    resetFusion,
+    resetSession() { state.hands = []; handSlots.reset(); resetFusion(); },
+    onFusionChange(listener) { fusionListener = listener; listener(state.fusion); },
     setStrength(value) { state.strength = value; },
     capture() {
       const exportCanvas = document.createElement('canvas');
