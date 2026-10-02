@@ -72,7 +72,7 @@ function crystal(c, field, colors, time, strength, pixel) {
   c.restore();
 }
 
-export function drawPowerScene(c, hands, width, height, look, strength, time, drawFacet) {
+export function drawPowerScene(c, hands, width, height, look, strength, time) {
   const field = powerFromHands(hands, width, height, strength);
   if (!field) return;
   const colors = PALETTES[look] || PALETTES.prism;
@@ -92,10 +92,6 @@ export function drawPowerScene(c, hands, width, height, look, strength, time, dr
   halo.addColorStop(0, colors[1] + '00'); halo.addColorStop(.52, colors[0] + '16'); halo.addColorStop(1, colors[1] + '00');
   c.fillStyle = halo; c.fillRect(0, 0, width, height);
 
-  // Filtered camera bands retain the fingertip topology of the original mesh.
-  field.facets.forEach((vertices, index) => {
-    c.save(); c.globalAlpha = .35 + amount * .27; drawFacet(c, vertices, index); c.restore();
-  });
   prismFaces(c, faces, colors, time, amount);
   crystal(c, field, colors, time, amount, pixel);
 
@@ -149,7 +145,6 @@ export function drawPowerScene(c, hands, width, height, look, strength, time, dr
   const markedTips = new Set();
   field.anchors.polygons.forEach((vertices, band) => {
     const expanded = field.facets[band];
-    wire(c, expanded, colors[band % 3], .7, 1.6, pixel ? 0 : 6);
     vertices.forEach((p, i) => {
       const q = expanded[i];
       c.strokeStyle = colors[band % 3]; c.globalAlpha = .55; c.lineWidth = 1;

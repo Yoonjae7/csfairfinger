@@ -175,10 +175,7 @@ export function createScene(canvas) {
     const liveHands = performance.now() - state.lastHandUpdate < 500 ? state.hands : [];
     if (state.mode === 'power') {
       if (includeUI) state.powerSpin = powerSpin.update(liveHands, WIDTH, HEIGHT, now, reducedMotion.matches);
-      drawPowerScene(c, liveHands, WIDTH, HEIGHT, state.filter, state.strength, state.powerSpin.time, (target, vertices, index) => {
-        const filterName = index === 0 ? state.filter : FILTERS[(FILTERS.indexOf(state.filter) + 1) % FILTERS.length];
-        clippedImage(target, vertices, treatment(filterName, index > 0), filterName);
-      });
+      drawPowerScene(c, liveHands, WIDTH, HEIGHT, state.filter, state.strength, state.powerSpin.time);
     } else {
       drawPortal(c, liveHands);
     }
