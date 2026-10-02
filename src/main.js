@@ -1,7 +1,6 @@
 import './styles.css';
 import { createScene } from './scene.js';
 import { analyzeHand, createGestureController } from './gestures.js';
-import { fusionName } from './element-fusion.js';
 
 const $ = selector => document.querySelector(selector);
 const canvas = $('#scene');
@@ -13,14 +12,11 @@ const cameraState = $('#camera-state');
 const trackingState = $('#tracking-state');
 const hint = $('#stage-hint');
 const filterButtons = [...document.querySelectorAll('[data-filter]')];
-const elementButtons = [...document.querySelectorAll('[data-element]')];
 const modeButtons = [...document.querySelectorAll('[data-mode]')];
 const filterNames = filterButtons.map(button => button.dataset.filter);
-const elementNames = [...new Set(elementButtons.map(button => button.dataset.element))];
 const modeNames = modeButtons.map(button => button.dataset.mode);
-const modeLabels = { '2d': '2D portal', '3d': '3D mesh', elemental: '3D elements' };
+const modeLabels = { '2d': '2D portal', '3d': '3D mesh', power: 'Hypergeometry' };
 const gestureController = createGestureController();
-const handGestures = { left: createGestureController(), right: createGestureController() };
 let stream = null;
 let landmarker = null;
 let trackingLoopActive = false;
@@ -58,7 +54,6 @@ function stopCamera() {
   scene.setHands([]);
   scene.resetSession();
   gestureController.reset();
-  Object.values(handGestures).forEach(controller => controller.reset());
   handCount = 0;
   updateCaptureAvailability();
 }
@@ -115,20 +110,11 @@ function processHands(result) {
   if (gesture.toggleMode) {
     selectMode(modeNames[(modeNames.indexOf(scene.state.mode) + 1) % modeNames.length]);
     setHint(`Mode switched to ${modeLabels[scene.state.mode]}. Spread your hands again to reshape it.`);
-  } else if (scene.state.mode === 'elemental') {
-    for (const slot of ['left', 'right']) {
-      const hand = hands.find(candidate => candidate.slot === slot);
-      const local = handGestures[slot].update(gesture.dualFist || !hand ? [] : [hand], performance.now());
-      if (local.nextFilter) {
-        selectElement(scene.state.elements[slot] === 'fire' ? 'water' : 'fire', slot);
-        setHint(`${slot === 'left' ? 'Left' : 'Right'} hand element changed. Bring both orbs together and hold for five seconds to forge them.`);
-      }
-    }
   } else if (gesture.nextFilter) {
     cycleLook(1);
-    setHint(`${scene.state.mode === 'elemental' ? 'Element' : 'Look'} changed. Release your thumb and pinky, then touch them again to change it once more.`);
+    setHint(`Look changed. Release your thumb and pinky, then touch them again to change it once more.`);
   }
-  trackingState.textContent = gesture.dualFist ? 'TWO FISTS / MODE SWITCH' : gesture.filterPinch ? `THUMB + PINKY / NEXT ${scene.state.mode === 'elemental' ? 'ELEMENT' : 'LOOK'}` : hands.length >= 2 ? `TWO HANDS / ${scene.state.mode === '3d' ? 'MESH' : scene.state.mode === 'elemental' ? 'ELEMENTS' : 'PORTAL'} LIVE` : hands.length === 1 ? `ONE HAND / MINI ${scene.state.mode === 'elemental' ? 'ELEMENT' : 'PORTAL'}` : 'SHOW YOUR HANDS TO OPEN PORTAL';
+  trackingState.textContent = gesture.dualFist ? 'TWO FISTS / MODE SWITCH' : gesture.filterPinch ? 'THUMB + PINKY / NEXT LOOK' : hands.length >= 2 ? `TWO HANDS / ${scene.state.mode === '3d' ? 'MESH' : scene.state.mode === 'power' ? 'HYPERGEOMETRY' : 'PORTAL'} LIVE` : hands.length === 1 ? `ONE HAND / ${scene.state.mode === 'power' ? 'MINI HYPERGEOMETRY' : 'MINI PORTAL'}` : 'SHOW YOUR HANDS TO OPEN THE EFFECT';
 }
 
 function trackHands() {
@@ -166,7 +152,7 @@ async function openCamera() {
     hideWelcome();
     setSourceStatus('CAMERA LIVE', true);
     trackingState.textContent = 'LOADING HAND TRACKER…';
-    setHint('Spread two hands to open the effect. Touch thumb to pinky for the next look or element; close both fists to change mode.');
+    setHint('Spread two hands to open the effect. Touch thumb to pinky for the next look; close both fists to change mode.');
     try {
       await loadLandmarker();
       if (request !== cameraRequest || !stream) return;
@@ -189,15 +175,12 @@ async function openCamera() {
 }
 
 function selectMode(mode) {
-  if (scene.state.mode !== mode) Object.values(handGestures).forEach(controller => controller.reset());
   scene.setMode(mode);
   modeButtons.forEach(button => {
     const active = button.dataset.mode === mode;
     button.classList.toggle('active', active);
     button.setAttribute('aria-pressed', String(active));
   });
-  $('#filter-section').hidden = mode === 'elemental';
-  $('#element-section').hidden = mode !== 'elemental';
   updateEffectLabel();
 }
 
@@ -212,30 +195,12 @@ function selectFilter(name) {
   updateEffectLabel();
 }
 
-function selectElement(name, slot) {
-  scene.setElement(name, slot);
-  elementButtons.forEach(button => {
-    const active = button.dataset.element === scene.state.elements[button.dataset.hand];
-    button.classList.toggle('active', active);
-    button.setAttribute('aria-pressed', String(active));
-  });
-  for (const hand of ['left', 'right']) $(`#${hand}-element-name`).textContent = scene.state.elements[hand].toUpperCase();
-  updateEffectLabel();
-}
-
 function updateEffectLabel() {
-  const look = scene.state.mode === 'elemental'
-    ? scene.state.fusion.fused ? fusionName(scene.state.fusion.fused.kind) : `${scene.state.elements.left} + ${scene.state.elements.right}`
-    : scene.state.filter;
-  $('#effect-label').textContent = `◌  ${modeLabels[scene.state.mode].toUpperCase()} / ${look.toUpperCase()}`;
+  $('#effect-label').textContent = `◌  ${modeLabels[scene.state.mode].toUpperCase()} / ${scene.state.filter.toUpperCase()}`;
 }
 
 function cycleLook(direction) {
-  if (scene.state.mode === 'elemental') {
-    for (const slot of ['left', 'right']) selectElement(elementNames[(elementNames.indexOf(scene.state.elements[slot]) + direction + elementNames.length) % elementNames.length], slot);
-  } else {
-    selectFilter(filterNames[(filterNames.indexOf(scene.state.filter) + direction + filterNames.length) % filterNames.length]);
-  }
+  selectFilter(filterNames[(filterNames.indexOf(scene.state.filter) + direction + filterNames.length) % filterNames.length]);
 }
 
 function capture() {
@@ -268,12 +233,6 @@ $('#end-session').addEventListener('click', () => endSession());
 $('#capture').addEventListener('click', capture);
 modeButtons.forEach(button => button.addEventListener('click', () => selectMode(button.dataset.mode)));
 filterButtons.forEach(button => button.addEventListener('click', () => selectFilter(button.dataset.filter)));
-elementButtons.forEach(button => button.addEventListener('click', () => selectElement(button.dataset.element, button.dataset.hand)));
-$('#swap-elements').addEventListener('click', () => {
-  const { left, right } = scene.state.elements;
-  selectElement(right, 'left'); selectElement(left, 'right');
-});
-$('#split-elements').addEventListener('click', () => scene.resetFusion(true));
 $('#strength').addEventListener('input', event => {
   const value = Number(event.target.value);
   scene.setStrength(value / 100);
@@ -289,20 +248,9 @@ document.addEventListener('keydown', event => {
 });
 
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { handCount = 0; scene.setHands([]); scene.resetFusion(); updateCaptureAvailability(); }
+  if (document.hidden) { handCount = 0; scene.setHands([]); updateCaptureAvailability(); }
 });
 window.addEventListener('pagehide', stopCamera);
 
 selectMode(scene.state.mode);
 selectFilter(scene.state.filter);
-selectElement(scene.state.elements.left, 'left');
-selectElement(scene.state.elements.right, 'right');
-scene.onFusionChange(fusion => {
-  $('#split-elements').hidden = fusion.phase === 'idle';
-  const kind = scene.state.elements.left === scene.state.elements.right ? scene.state.elements.left : 'hybrid';
-  const name = fusionName(kind);
-  $('#fusion-status').textContent = fusion.phase === 'fused' ? `${name} forged! Pull your hands apart to split it.`
-    : fusion.phase === 'mixing' ? `Forging ${name}… Keep both hands close.`
-    : `${scene.state.elements.left === 'fire' ? 'Fire' : 'Water'} + ${scene.state.elements.right === 'fire' ? 'Fire' : 'Water'} → ${name}. Start with hands apart.`;
-  updateEffectLabel();
-});

@@ -1,6 +1,5 @@
 import { portalFromHands } from './portal-geometry.js';
-import { drawElementalScene } from './elements.js';
-import { createElementFusion } from './element-fusion.js';
+import { drawPowerScene } from './power-effects.js';
 import { createHandSlots } from './hand-slots.js';
 
 const WIDTH = 1280;
@@ -19,16 +18,11 @@ export function createScene(canvas) {
   pixelCanvas.height = 60;
   const pixelCtx = pixelCanvas.getContext('2d');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  const fusion = createElementFusion();
   const handSlots = createHandSlots();
-  let fusionListener = null;
-  let fusionSignature = '';
   const state = {
     source: null,
     mode: '3d',
     filter: 'prism',
-    elements: { left: 'fire', right: 'water' },
-    fusion: fusion.state,
     renderTime: 0,
     strength: 0.72,
     hands: [],
@@ -172,21 +166,19 @@ export function createScene(canvas) {
     updateSource();
     c.clearRect(0, 0, WIDTH, HEIGHT);
     c.drawImage(sourceCanvas, 0, 0);
-    if (state.mode !== 'elemental' && state.filter === 'dream') {
+    if (state.mode !== 'power' && state.filter === 'dream') {
       c.fillStyle = '#e6c4ff'; c.globalAlpha = .10 * state.strength; c.fillRect(0, 0, WIDTH, HEIGHT); c.globalAlpha = 1;
     }
     const liveHands = performance.now() - state.lastHandUpdate < 500 ? state.hands : [];
-    if (state.mode === 'elemental') {
-      if (includeUI) {
-        const freshHands = !document.hidden && now - state.lastHandUpdate < 250 ? state.hands : [];
-        state.fusion = fusion.update(freshHands, state.elements, now);
-        emitFusion();
-      }
-      drawElementalScene(c, sourceCanvas, state.fusion, state.strength, state.renderTime, includeUI, reducedMotion.matches);
+    if (state.mode === 'power') {
+      drawPowerScene(c, liveHands, WIDTH, HEIGHT, state.filter, state.strength, state.renderTime, (target, vertices, index) => {
+        const filterName = index === 0 ? state.filter : FILTERS[(FILTERS.indexOf(state.filter) + 1) % FILTERS.length];
+        clippedImage(target, vertices, treatment(filterName, index > 0), filterName);
+      });
     } else {
       drawPortal(c, liveHands);
     }
-    if (includeUI && state.mode !== 'elemental') drawHands(c);
+    if (includeUI) drawHands(c);
   }
 
   function frame() { render(); requestAnimationFrame(frame); }
@@ -213,25 +205,13 @@ export function createScene(canvas) {
     return state.hands;
   }
 
-  function emitFusion() {
-    const signature = `${state.mode}:${state.elements.left}:${state.elements.right}:${state.fusion.phase}:${Math.floor(state.fusion.progress * 50)}:${state.fusion.orbs.length}:${state.fusion.fused?.kind}`;
-    if (signature !== fusionSignature) { fusionSignature = signature; fusionListener?.(state.fusion); }
-  }
-
-  function resetFusion(waitForSeparation = false) {
-    fusion.reset(waitForSeparation); state.fusion = fusion.state; emitFusion();
-  }
-
   return {
     state,
     setSource(source) { state.source = source; },
     setHands,
-    setMode(mode) { if (state.mode !== mode) { state.mode = mode; resetFusion(); } },
+    setMode(mode) { state.mode = mode; },
     setFilter(filter) { state.filter = filter; },
-    setElement(element, slot) { if (state.elements[slot] !== element) { state.elements[slot] = element; resetFusion(); } },
-    resetFusion,
-    resetSession() { state.hands = []; handSlots.reset(); resetFusion(); },
-    onFusionChange(listener) { fusionListener = listener; listener(state.fusion); },
+    resetSession() { state.hands = []; handSlots.reset(); },
     setStrength(value) { state.strength = value; },
     capture() {
       const exportCanvas = document.createElement('canvas');

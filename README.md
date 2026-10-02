@@ -23,15 +23,14 @@ For local development, use `npm run dev -- --host 127.0.0.1`.
 
 ## Play
 
-- Spread two hands. Your thumb and index fingertips define the 2D portal, which can fold into a bowtie as you rotate a hand. In 3D Mesh mode, all five fingertips form two filtered mesh bands. In 3D Elements mode, each hand holds its own Fire or Water orb. Choose each hand’s element independently. The assignments follow your first left/right positions in the mirrored view and stay attached as your hands move.
-- Show your palm to the camera and tap thumb to pinky to change the look, or that hand’s element in 3D Elements, once; visibly separate them before changing it again. Sideways hands and projected fingertip overlap do not count as a tap. Close both fists to cycle through 2D Portal, 3D Mesh, and 3D Elements. The gesture guards prevent a held pose from cycling rapidly.
-- Choose among six looks in 2D Portal and 3D Mesh, or Fire and Water in 3D Elements mode, and adjust strength on screen.
-- Bring both elemental orbs together and hold for five seconds. The mixing animation builds toward Steamfire (Fire + Water), a larger Tidal sphere (Water + Water), or Inferno with a fire splash burst (Fire + Fire). Separate your hands to split the result. Brief tracking flicker pauses the timer; a longer interruption cancels the hold. Changing an element, changing mode, or ending the session resets fusion.
-- Fire has a turbulent glowing volume with drifting embers; Water refracts the camera image through animated ripples and reflections. The earlier orbiting forge animation builds into a larger element without a countdown overlay. On devices without WebGL, the Canvas renderer provides the effects.
+- Spread two hands. Your thumb and index fingertips define the 2D portal, which can fold into a bowtie as you rotate a hand. In 3D Mesh mode, all five fingertips form two filtered mesh bands. These original geometry algorithms are unchanged.
+- **Hypergeometry** expands the same five-tip mesh into a large prismatic field: a rotating 3D icosahedron, filtered camera facets, tilted polygon orbits, traveling light, and orbiting tetrahedral shards. Spread your hands to grow the field, tilt them to turn it, and move them to stretch its light trails. One hand makes a smaller field. This replaces Elements mode.
+- Show your palm to the camera and tap thumb to pinky to change the look once; visibly separate them before changing it again. Sideways hands and projected fingertip overlap do not count as a tap. Close both fists to cycle through 2D Portal, 3D Mesh, and Hypergeometry. The gesture guards prevent a held pose from cycling rapidly.
+- Choose among the same six looks in every mode and adjust strength on screen. Hypergeometry uses a distinct light palette for each look and responds immediately, with no forging timer. Automatic motion pauses when the browser requests reduced motion; fingertip control still works.
 - The portal appears only while one or two hands are visible to the camera. Without a tracked hand, visitors see the mirrored camera feed.
 - Capture a branded PNG using **Capture this moment** while a hand is tracked. **End session** stops the camera for the next visitor.
 
-Shortcuts: `C` changes dimension, `N` / `P` (or arrow keys) cycle looks or toggle both hand elements, and `Space` captures. Buttons have keyboard focus and accessible labels.
+Shortcuts: `C` changes dimension, `N` / `P` (or arrow keys) cycle looks, and `Space` captures. Buttons have keyboard focus and accessible labels.
 
 ## Privacy and assets
 
