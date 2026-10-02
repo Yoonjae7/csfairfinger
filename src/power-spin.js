@@ -1,4 +1,6 @@
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const BASE_SPIN_SPEED = 10;
+const CLOSE_SPIN_SPEED = 400;
 
 export function handProximity(hands, width, height) {
   if (hands.length < 2) return 0;
@@ -16,17 +18,17 @@ export function handProximity(hands, width, height) {
 }
 
 export function createPowerSpin() {
-  let time = 0, speed = 1, lastFrame = null;
+  let time = 0, speed = BASE_SPIN_SPEED, lastFrame = null;
   return {
-    reset() { time = 0; speed = 1; lastFrame = null; return { time, speed, proximity: 0 }; },
+    reset() { time = 0; speed = BASE_SPIN_SPEED; lastFrame = null; return { time, speed, proximity: 0 }; },
     update(hands, width, height, now, reducedMotion = false) {
       const elapsed = lastFrame === null ? 0 : Math.max(0, (now - lastFrame) / 1000);
       const dt = elapsed <= .25 ? elapsed : 0;
       lastFrame = now;
-      if (reducedMotion) { time = 0; speed = 1; return { time, speed, proximity: 0 }; }
-      if (!hands.length) { speed = 1; return { time, speed, proximity: 0 }; }
+      if (reducedMotion) { time = 0; speed = BASE_SPIN_SPEED; return { time, speed, proximity: 0 }; }
+      if (!hands.length) { speed = BASE_SPIN_SPEED; return { time, speed, proximity: 0 }; }
       const proximity = handProximity(hands, width, height);
-      const target = 1 + proximity * 39;
+      const target = BASE_SPIN_SPEED + proximity * (CLOSE_SPIN_SPEED - BASE_SPIN_SPEED);
       // Ease the speed, then integrate phase. Never multiply page uptime by speed.
       const easing = Math.exp(-6 * dt);
       time += target * dt + (speed - target) * (1 - easing) / 6;

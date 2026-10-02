@@ -15,13 +15,23 @@ test('closer hands raise the spin speed and pulling them apart slows it smoothly
   const spin = createPowerSpin(); spin.update(far, 1280, 800, 0);
   let state;
   for (let now = 16; now <= 960; now += 16) state = spin.update(near, 1280, 800, now);
-  assert.ok(state.speed > 38 && state.speed <= 40);
+  assert.ok(state.speed > 380 && state.speed <= 400);
   const fast = state;
   const transition = spin.update(far, 1280, 800, 976);
-  assert.ok(transition.speed < fast.speed && transition.speed > 1);
-  assert.ok(transition.time > fast.time && transition.time - fast.time < .65);
+  assert.ok(transition.speed < fast.speed && transition.speed > 10);
+  assert.ok(transition.time > fast.time && transition.time - fast.time < 6.5);
   for (let now = 992; now <= 1952; now += 16) state = spin.update(far, 1280, 800, now);
-  assert.ok(state.speed < 1.15);
+  assert.ok(state.speed >= 10 && state.speed < 11.5);
+});
+
+test('separated hands and a single hand keep a visible steady rotation', () => {
+  const spin = createPowerSpin(); spin.update(far, 1280, 800, 0);
+  const separated = spin.update(far, 1280, 800, 100);
+  assert.equal(separated.speed, 10);
+  assert.ok(separated.time >= 1);
+  const single = spin.update([hand(.5)], 1280, 800, 200);
+  assert.equal(single.speed, 10);
+  assert.ok(single.time > separated.time);
 });
 
 test('proximity is independent of hand order and camera distance', () => {
@@ -43,13 +53,13 @@ test('spin phase is continuous over long sessions and stable across frame rates'
   const afterGap = a.update(near, 1280, 800, 86400000);
   assert.equal(afterGap.time, first.time, 'a paused tab must not skip through hours of rotation');
   const next = a.update(far, 1280, 800, 86400016);
-  assert.ok(next.time - afterGap.time < .65);
+  assert.ok(next.time - afterGap.time < 6.5);
 });
 
 test('lost tracking freezes phase; reduced motion and reset return a stationary scene', () => {
   const spin = createPowerSpin(); spin.update(near, 1280, 800, 0);
   const moving = spin.update(near, 1280, 800, 100);
   assert.equal(spin.update([], 1280, 800, 150).time, moving.time);
-  assert.deepEqual(spin.update(near, 1280, 800, 200, true), { time: 0, speed: 1, proximity: 0 });
-  assert.deepEqual(spin.reset(), { time: 0, speed: 1, proximity: 0 });
+  assert.deepEqual(spin.update(near, 1280, 800, 200, true), { time: 0, speed: 10, proximity: 0 });
+  assert.deepEqual(spin.reset(), { time: 0, speed: 10, proximity: 0 });
 });
