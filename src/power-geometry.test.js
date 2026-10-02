@@ -1,44 +1,82 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { portalFromHands } from './portal-geometry.js';
-import { FINGERTIPS, SHAPES, fingerSources, orbitPose, projectVertex } from './power-geometry.js';
+import { CAGE_EDGES, CAGE_FACES, CAGE_VERTICES, powerFromHands, projectPowerPoint } from './power-geometry.js';
 
-function hand(x, slot = 'left') {
-  const landmarks = Array.from({ length: 21 }, () => ({ x, y: .58 }));
-  landmarks[0] = { x, y: .74 }; landmarks[5] = { x: x - .035, y: .57 }; landmarks[9] = { x, y: .56 }; landmarks[17] = { x: x + .035, y: .58 };
-  FINGERTIPS.forEach((index, i) => { landmarks[index] = { x: x + (i - 2) * .038, y: .32 + Math.abs(i - 2) * .085 }; });
-  return { landmarks, slot };
+function hand(x, open = 1, y = .4) {
+  const landmarks = Array.from({ length: 21 }, () => ({ x, y: y + .25 }));
+  [4, 8, 12, 16, 20].forEach((index, i) => {
+    landmarks[index] = { x: x + (i - 2) * .025 * open, y: y + Math.abs(i - 2) * .05 * open };
+  });
+  landmarks[5] = { x: x - .035, y: y + .14 };
+  landmarks[9] = { x, y: y + .12 };
+  landmarks[17] = { x: x + .035, y: y + .14 };
+  return { landmarks };
 }
 
-test('each finger uses the exact original mesh tip and keeps its hand identity', () => {
-  const hands = [hand(.27), hand(.73, 'right')];
-  const sources = fingerSources(hands, 1280, 800);
-  const anchors = portalFromHands(hands, '3d', 1280, 800).polygons.flat();
-  assert.equal(sources.length, 10);
-  sources.forEach(source => assert.ok(anchors.some(p => p.x === source.position.x && p.y === source.position.y)));
-  assert.deepEqual(fingerSources([...hands].reverse(), 1280, 800).sort((a, b) => a.id.localeCompare(b.id)), [...sources].sort((a, b) => a.id.localeCompare(b.id)));
-  assert.deepEqual(fingerSources([], 1280, 800), []);
+test('power keeps the exact original five-tip mesh anchors, including input order independence', () => {
+  const hands = [hand(.28), hand(.72)];
+  const original = portalFromHands(hands, '3d', 1280, 800);
+  const field = powerFromHands(hands, 1280, 800);
+  assert.deepEqual(field.anchors, original);
+  assert.deepEqual(powerFromHands([...hands].reverse(), 1280, 800), field);
+  assert.ok(field.facets[0][0].x < original.polygons[0][0].x);
+  assert.ok(field.facets[0][3].x > original.polygons[0][3].x);
 });
 
-test('orbits are local to their fingertip, move continuously in a circle, and respond to strength', () => {
-  const source = fingerSources([hand(.5)], 1280, 800)[1];
-  const a = orbitPose(source, 0, .72), opposite = orbitPose(source, Math.PI, .72);
-  assert.ok(a.x > source.position.x && opposite.x < source.position.x);
-  const next = orbitPose(source, .01, .72);
-  assert.ok(Math.hypot(next.x - a.x, next.y - a.y) < 2);
-  const loud = orbitPose(source, 0, 1), soft = orbitPose(source, 0, .2);
-  assert.ok(Math.hypot(loud.x - source.position.x, loud.y - source.position.y) > Math.hypot(soft.x - source.position.x, soft.y - source.position.y));
-  assert.ok(orbitPose(source, Math.PI / 2, .72).z > 0 && orbitPose(source, Math.PI * 1.5, .72).z < 0);
+test('spreading hands and raising strength expand the field without unbounded size', () => {
+  const close = powerFromHands([hand(.4), hand(.6)], 1280, 800);
+  const wide = powerFromHands([hand(.2), hand(.8)], 1280, 800);
+  assert.ok(wide.rx > close.rx);
+  assert.ok(wide.ry > close.ry);
+  assert.ok(powerFromHands([hand(.3), hand(.7)], 1280, 800, 1).rx > powerFromHands([hand(.3), hand(.7)], 1280, 800, .2).rx);
+  const extreme = powerFromHands([hand(-.5, 10), hand(1.5, 10)], 1280, 800, 10);
+  assert.ok(extreme.rx <= 1280 * .39);
+  assert.ok(extreme.ry <= 800 * .37);
+  assert.equal(extreme.strength, 1);
 });
 
-test('all floating shapes are closed 3D solids with finite perspective projection', () => {
-  for (const mesh of Object.values(SHAPES)) {
-    const edges = mesh.faces.flatMap(face => face.map((a, i) => [a, face[(i + 1) % face.length]].sort((x, y) => x - y).join(':')));
-    for (const edge of new Set(edges)) assert.equal(edges.filter(value => value === edge).length, 2);
-    for (const time of [0, 3600, 86400]) {
-      const points = mesh.vertices.map(v => projectVertex(v, { x: 640, y: 400 }, 26, { x: time * .35, y: time * .7, z: .3 }));
-      assert.ok(points.every(p => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z)));
-      assert.ok(points.some(p => p.z > 0) && points.some(p => p.z < 0));
-    }
+test('one hand controls a smaller field and losing all hands removes it', () => {
+  assert.equal(powerFromHands([], 1280, 800), null);
+  const single = powerFromHands([hand(.3)], 1280, 800);
+  assert.equal(single.anchors.variant, 'single');
+  assert.equal(single.facets.length, 1);
+  assert.equal(single.facets[0].length, 5);
+  assert.ok(single.rx < powerFromHands([hand(.3), hand(.7)], 1280, 800).rx);
+  assert.ok(Math.abs(single.center.x - 1280 * .3) < 1);
+});
+
+test('closing a fingertip fan contracts both the size and depth of a one-hand field', () => {
+  const closed = powerFromHands([hand(.5, .15)], 1280, 800);
+  const open = powerFromHands([hand(.5, 1.4)], 1280, 800);
+  assert.ok(open.openness > closed.openness);
+  assert.ok(open.rx > closed.rx && open.ry > closed.ry);
+  assert.ok(open.depth > closed.depth);
+  assert.deepEqual(open.anchors, portalFromHands([hand(.5, 1.4)], '3d', 1280, 800));
+});
+
+test('finger-spread response is stable when the same hand moves closer to the camera', () => {
+  const original = hand(.5);
+  const enlarged = { landmarks: original.landmarks.map(p => ({ x: .5 + (p.x - .5) * 1.5, y: .5 + (p.y - .5) * 1.5 })) };
+  const normal = powerFromHands([original], 1280, 800);
+  const near = powerFromHands([enlarged], 1280, 800);
+  assert.ok(Math.abs(normal.openness - near.openness) < .001);
+  assert.ok(Math.abs(normal.depth - near.depth) < .001);
+});
+
+test('the cage is a closed 3D icosahedron with finite perspective projection over long sessions', () => {
+  assert.equal(CAGE_VERTICES.length, 12);
+  assert.equal(CAGE_FACES.length, 20);
+  assert.equal(CAGE_EDGES.length, 30);
+  for (const [a, b] of CAGE_EDGES) {
+    assert.equal(CAGE_FACES.filter(face => face.includes(a) && face.includes(b)).length, 2);
+  }
+  const field = powerFromHands([hand(.3), hand(.7)], 1280, 800);
+  for (const time of [0, 10, 3600, 86400]) {
+    const points = CAGE_VERTICES.map(v => projectPowerPoint(v, field, { x: .3, y: time * .19, z: .1 }));
+    assert.ok(points.every(p => Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z)));
+    assert.ok(points.some(p => p.z > .2) && points.some(p => p.z < -.2));
+    const next = projectPowerPoint(CAGE_VERTICES[0], field, { x: .3, y: (time + 1 / 60) * .19, z: .1 });
+    assert.ok(Math.hypot(points[0].x - next.x, points[0].y - next.y) < 5);
   }
 });

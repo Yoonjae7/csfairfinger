@@ -16,7 +16,7 @@ const modeButtons = [...document.querySelectorAll('[data-mode]')];
 const filterNames = filterButtons.map(button => button.dataset.filter);
 const modeNames = modeButtons.map(button => button.dataset.mode);
 const modeLabels = { '2d': '2D portal', '3d': '3D mesh', power: 'Hypergeometry' };
-const powerHint = 'Move your fingers to steer the orbit. Flick a finger or sweep your hand quickly to launch shapes. Thumb + pinky changes the look.';
+const powerHint = 'Spread your hands to expand the geometry. Bring them closer to spin faster; pull apart to slow down. Thumb + pinky changes the look.';
 const gestureController = createGestureController();
 let stream = null;
 let landmarker = null;
