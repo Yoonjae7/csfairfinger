@@ -1,5 +1,6 @@
 import { portalFromHands } from './portal-geometry.js';
 import { drawPowerScene } from './power-effects.js';
+import { createPowerMotion } from './power-motion.js';
 import { createHandSlots } from './hand-slots.js';
 
 const WIDTH = 1280;
@@ -19,11 +20,13 @@ export function createScene(canvas) {
   const pixelCtx = pixelCanvas.getContext('2d');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const handSlots = createHandSlots();
+  const power = createPowerMotion(WIDTH, HEIGHT);
   const state = {
     source: null,
     mode: '3d',
     filter: 'prism',
     renderTime: 0,
+    power: null,
     strength: 0.72,
     hands: [],
     lastHandUpdate: 0,
@@ -171,14 +174,12 @@ export function createScene(canvas) {
     }
     const liveHands = performance.now() - state.lastHandUpdate < 500 ? state.hands : [];
     if (state.mode === 'power') {
-      drawPowerScene(c, liveHands, WIDTH, HEIGHT, state.filter, state.strength, state.renderTime, (target, vertices, index) => {
-        const filterName = index === 0 ? state.filter : FILTERS[(FILTERS.indexOf(state.filter) + 1) % FILTERS.length];
-        clippedImage(target, vertices, treatment(filterName, index > 0), filterName);
-      });
+      if (includeUI) state.power = power.update(liveHands, state.lastHandUpdate, now, state.strength, reducedMotion.matches);
+      drawPowerScene(c, state.power, state.filter, state.strength);
     } else {
       drawPortal(c, liveHands);
     }
-    if (includeUI) drawHands(c);
+    if (includeUI && state.mode !== 'power') drawHands(c);
   }
 
   function frame() { render(); requestAnimationFrame(frame); }
@@ -209,9 +210,9 @@ export function createScene(canvas) {
     state,
     setSource(source) { state.source = source; },
     setHands,
-    setMode(mode) { state.mode = mode; },
+    setMode(mode) { if (state.mode !== mode) { state.power = power.reset(); state.mode = mode; } },
     setFilter(filter) { state.filter = filter; },
-    resetSession() { state.hands = []; handSlots.reset(); },
+    resetSession() { state.hands = []; handSlots.reset(); state.power = power.reset(); },
     setStrength(value) { state.strength = value; },
     capture() {
       const exportCanvas = document.createElement('canvas');

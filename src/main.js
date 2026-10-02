@@ -16,6 +16,7 @@ const modeButtons = [...document.querySelectorAll('[data-mode]')];
 const filterNames = filterButtons.map(button => button.dataset.filter);
 const modeNames = modeButtons.map(button => button.dataset.mode);
 const modeLabels = { '2d': '2D portal', '3d': '3D mesh', power: 'Hypergeometry' };
+const powerHint = 'Move your fingers to steer the orbit. Flick a finger or sweep your hand quickly to launch shapes. Thumb + pinky changes the look.';
 const gestureController = createGestureController();
 let stream = null;
 let landmarker = null;
@@ -109,7 +110,7 @@ function processHands(result) {
   updateCaptureAvailability();
   if (gesture.toggleMode) {
     selectMode(modeNames[(modeNames.indexOf(scene.state.mode) + 1) % modeNames.length]);
-    setHint(`Mode switched to ${modeLabels[scene.state.mode]}. Spread your hands again to reshape it.`);
+    setHint(scene.state.mode === 'power' ? powerHint : `Mode switched to ${modeLabels[scene.state.mode]}. Spread your hands again to reshape it.`);
   } else if (gesture.nextFilter) {
     cycleLook(1);
     setHint(`Look changed. Release your thumb and pinky, then touch them again to change it once more.`);
@@ -152,7 +153,7 @@ async function openCamera() {
     hideWelcome();
     setSourceStatus('CAMERA LIVE', true);
     trackingState.textContent = 'LOADING HAND TRACKER…';
-    setHint('Spread two hands to open the effect. Touch thumb to pinky for the next look; close both fists to change mode.');
+    setHint(scene.state.mode === 'power' ? powerHint : 'Spread two hands to open the effect. Touch thumb to pinky for the next look; close both fists to change mode.');
     try {
       await loadLandmarker();
       if (request !== cameraRequest || !stream) return;
@@ -175,6 +176,7 @@ async function openCamera() {
 }
 
 function selectMode(mode) {
+  const previousMode = scene.state.mode;
   scene.setMode(mode);
   modeButtons.forEach(button => {
     const active = button.dataset.mode === mode;
@@ -182,6 +184,8 @@ function selectMode(mode) {
     button.setAttribute('aria-pressed', String(active));
   });
   updateEffectLabel();
+  if (mode === 'power') setHint(powerHint);
+  else if (previousMode === 'power') setHint('Spread two hands to open the effect. Touch thumb to pinky for the next look; close both fists to change mode.');
 }
 
 function selectFilter(name) {
