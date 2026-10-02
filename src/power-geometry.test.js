@@ -8,6 +8,9 @@ function hand(x, open = 1, y = .4) {
   [4, 8, 12, 16, 20].forEach((index, i) => {
     landmarks[index] = { x: x + (i - 2) * .025 * open, y: y + Math.abs(i - 2) * .05 * open };
   });
+  landmarks[5] = { x: x - .035, y: y + .14 };
+  landmarks[9] = { x, y: y + .12 };
+  landmarks[17] = { x: x + .035, y: y + .14 };
   return { landmarks };
 }
 
@@ -41,6 +44,24 @@ test('one hand controls a smaller field and losing all hands removes it', () => 
   assert.equal(single.facets[0].length, 5);
   assert.ok(single.rx < powerFromHands([hand(.3), hand(.7)], 1280, 800).rx);
   assert.ok(Math.abs(single.center.x - 1280 * .3) < 1);
+});
+
+test('closing a fingertip fan contracts both the size and depth of a one-hand field', () => {
+  const closed = powerFromHands([hand(.5, .15)], 1280, 800);
+  const open = powerFromHands([hand(.5, 1.4)], 1280, 800);
+  assert.ok(open.openness > closed.openness);
+  assert.ok(open.rx > closed.rx && open.ry > closed.ry);
+  assert.ok(open.depth > closed.depth);
+  assert.deepEqual(open.anchors, portalFromHands([hand(.5, 1.4)], '3d', 1280, 800));
+});
+
+test('finger-spread response is stable when the same hand moves closer to the camera', () => {
+  const original = hand(.5);
+  const enlarged = { landmarks: original.landmarks.map(p => ({ x: .5 + (p.x - .5) * 1.5, y: .5 + (p.y - .5) * 1.5 })) };
+  const normal = powerFromHands([original], 1280, 800);
+  const near = powerFromHands([enlarged], 1280, 800);
+  assert.ok(Math.abs(normal.openness - near.openness) < .001);
+  assert.ok(Math.abs(normal.depth - near.depth) < .001);
 });
 
 test('the cage is a closed 3D icosahedron with finite perspective projection over long sessions', () => {

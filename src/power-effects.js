@@ -1,6 +1,8 @@
 import { CAGE_EDGES, CAGE_FACES, CAGE_VERTICES, powerFromHands, projectPowerPoint } from './power-geometry.js';
 
 const TAU = Math.PI * 2;
+const CRYSTAL_VERTICES = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+const CRYSTAL_FACES = [[0, 2, 4], [2, 1, 4], [1, 3, 4], [3, 0, 4], [2, 0, 5], [1, 2, 5], [3, 1, 5], [0, 3, 5]];
 const PALETTES = {
   prism: ['#83f7ff', '#c0a0ff', '#ffb8eb', '#f4ffff'],
   thermal: ['#ffcf6a', '#ff756e', '#b690ff', '#fff4d9'],
@@ -34,13 +36,53 @@ function spark(c, p, size, color, alpha) {
   c.moveTo(p.x, p.y - size); c.lineTo(p.x, p.y + size); c.stroke();
 }
 
+function prismFaces(c, faces, colors, time, strength, core = false) {
+  faces.forEach(face => {
+    const [a, b, d] = face.points;
+    const front = Math.max(0, face.depth);
+    const fill = c.createLinearGradient(a.x, a.y, b.x, b.y);
+    fill.addColorStop(0, colors[face.i % 3]);
+    fill.addColorStop(.48, '#1f2347');
+    fill.addColorStop(1, colors[(face.i + 1) % 3]);
+    c.globalAlpha = (.025 + (face.depth + 1) * .035) * (.5 + strength) * (core ? 1.2 : 1);
+    c.fillStyle = fill; path(c, face.points); c.fill();
+
+    const center = { x: (a.x + b.x + d.x) / 3, y: (a.y + b.y + d.y) / 3 };
+    const inset = face.points.map(p => lerp(p, center, core ? .12 : .16));
+    wire(c, inset, colors[(face.i + 1) % 3], front * .28, .65);
+
+    // A reflection slides across the actual triangle, fading at the back.
+    const sweep = (Math.sin(time * .7 + face.i * .63) + 1) / 2;
+    const first = lerp(a, d, sweep), second = lerp(b, d, sweep);
+    c.strokeStyle = colors[3]; c.globalAlpha = front * (.12 + strength * .18) * Math.sin(sweep * Math.PI);
+    c.lineWidth = core ? 3 : 2; c.beginPath(); line(c, first, second); c.stroke();
+  });
+}
+
+function crystal(c, field, colors, time, strength, pixel) {
+  const rotation = { x: .55 - field.motion.y * .00015, y: -time * .25 + field.motion.x * .00025, z: field.roll };
+  const points = CRYSTAL_VERTICES.map(v => projectPowerPoint(v, field, rotation, .47 + field.openness * .09));
+  const faces = CRYSTAL_FACES.map((indices, i) => ({ points: indices.map(index => points[index]), i, depth: indices.reduce((sum, index) => sum + points[index].z, 0) / 3 })).sort((a, b) => a.depth - b.depth);
+  c.save(); c.globalCompositeOperation = 'source-over';
+  prismFaces(c, faces, colors, time * 1.3, strength, true);
+  faces.forEach(face => wire(c, face.points, '#20233d', .13, 3.2));
+  c.globalCompositeOperation = 'screen';
+  faces.forEach(face => wire(c, face.points, colors[face.i % 3], .2 + (face.depth + 1) * .22, pixel ? 1.7 : 1.1));
+  points.forEach(p => spark(c, p, 3.5, colors[3], .55 + (p.z + 1) * .2));
+  c.restore();
+}
+
 export function drawPowerScene(c, hands, width, height, look, strength, time, drawFacet) {
   const field = powerFromHands(hands, width, height, strength);
   if (!field) return;
   const colors = PALETTES[look] || PALETTES.prism;
   const amount = field.strength;
   const pixel = look === 'pixel';
-  const rotation = { x: .32 + Math.sin(time * .17) * .16, y: time * .19, z: field.roll * .45 + Math.sin(time * .13) * .12 };
+  const rotation = {
+    x: .32 + Math.sin(time * .17) * .16 - field.motion.y * .00018,
+    y: time * .19 + field.motion.x * .0003,
+    z: field.roll * .7 + Math.sin(time * .13) * .12,
+  };
   const cage = CAGE_VERTICES.map(v => projectPowerPoint(v, field, rotation));
   const faces = CAGE_FACES.map((indices, i) => ({ points: indices.map(index => cage[index]), i, depth: indices.reduce((sum, index) => sum + cage[index].z, 0) / 3 })).sort((a, b) => a.depth - b.depth);
 
@@ -54,12 +96,13 @@ export function drawPowerScene(c, hands, width, height, look, strength, time, dr
   field.facets.forEach((vertices, index) => {
     c.save(); c.globalAlpha = .35 + amount * .27; drawFacet(c, vertices, index); c.restore();
   });
-  faces.forEach(face => {
-    const fill = c.createLinearGradient(face.points[0].x, face.points[0].y, face.points[1].x, face.points[1].y);
-    fill.addColorStop(0, colors[face.i % 3]); fill.addColorStop(1, colors[(face.i + 1) % 3]);
-    c.globalAlpha = (.018 + (face.depth + 1) * .025) * (.5 + amount);
-    c.fillStyle = fill; path(c, face.points); c.fill();
-  });
+  prismFaces(c, faces, colors, time, amount);
+  crystal(c, field, colors, time, amount, pixel);
+
+  // Dark undersides preserve the shape against a brightly lit camera feed.
+  c.globalCompositeOperation = 'source-over';
+  c.strokeStyle = '#17192e'; c.globalAlpha = .22; c.lineWidth = 5;
+  c.beginPath(); CAGE_EDGES.forEach(([a, b]) => line(c, cage[a], cage[b])); c.stroke();
 
   c.globalCompositeOperation = 'screen';
   // Three differently tilted polygon orbits make the depth visible as they turn.
@@ -69,6 +112,8 @@ export function drawPowerScene(c, hands, width, height, look, strength, time, dr
     ring(field, 6, { x: -.6, y: 1.03, z: time * .13 }, 1.26),
   ];
   orbits.forEach((points, i) => {
+    c.save(); c.globalCompositeOperation = 'source-over';
+    wire(c, points, '#20233d', .22, 4); c.restore();
     wire(c, points, colors[i], .11 + amount * .16, 7, pixel ? 0 : 18);
     wire(c, points, colors[i], .55 + amount * .3, pixel ? 2.4 : 1.6);
     const inner = points.map(p => ({ x: field.center.x + (p.x - field.center.x) * .96, y: field.center.y + (p.y - field.center.y) * .96 }));
@@ -101,6 +146,7 @@ export function drawPowerScene(c, hands, width, height, look, strength, time, dr
   });
 
   // Fingertips stay attached to the field through prismatic filaments.
+  const markedTips = new Set();
   field.anchors.polygons.forEach((vertices, band) => {
     const expanded = field.facets[band];
     wire(c, expanded, colors[band % 3], .7, 1.6, pixel ? 0 : 6);
@@ -108,7 +154,17 @@ export function drawPowerScene(c, hands, width, height, look, strength, time, dr
       const q = expanded[i];
       c.strokeStyle = colors[band % 3]; c.globalAlpha = .55; c.lineWidth = 1;
       c.beginPath(); line(c, p, q); c.stroke();
-      spark(c, p, 7, colors[3], .95);
+      const key = `${p.x}:${p.y}`;
+      if (!markedTips.has(key)) {
+        markedTips.add(key);
+        const radius = 7 + field.openness * 4;
+        const cuff = Array.from({ length: 5 }, (_, j) => {
+          const angle = j / 5 * TAU + field.roll + time * .2;
+          return { x: p.x + Math.cos(angle) * radius, y: p.y + Math.sin(angle) * radius };
+        });
+        wire(c, cuff, colors[band % 3], .6, 1);
+        spark(c, p, 5, colors[3], .95);
+      }
     });
   });
   cage.forEach((p, i) => {
