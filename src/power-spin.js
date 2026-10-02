@@ -26,7 +26,7 @@ export function createPowerSpin() {
       if (reducedMotion) { time = 0; speed = 1; return { time, speed, proximity: 0 }; }
       if (!hands.length) { speed = 1; return { time, speed, proximity: 0 }; }
       const proximity = handProximity(hands, width, height);
-      const target = 1 + proximity * 9;
+      const target = 1 + proximity * 39;
       // Ease the speed, then integrate phase. Never multiply page uptime by speed.
       const easing = Math.exp(-6 * dt);
       time += target * dt + (speed - target) * (1 - easing) / 6;

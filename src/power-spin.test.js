@@ -15,13 +15,13 @@ test('closer hands raise the spin speed and pulling them apart slows it smoothly
   const spin = createPowerSpin(); spin.update(far, 1280, 800, 0);
   let state;
   for (let now = 16; now <= 960; now += 16) state = spin.update(near, 1280, 800, now);
-  assert.ok(state.speed > 9 && state.speed <= 10);
+  assert.ok(state.speed > 38 && state.speed <= 40);
   const fast = state;
   const transition = spin.update(far, 1280, 800, 976);
   assert.ok(transition.speed < fast.speed && transition.speed > 1);
-  assert.ok(transition.time > fast.time && transition.time - fast.time < .17);
+  assert.ok(transition.time > fast.time && transition.time - fast.time < .65);
   for (let now = 992; now <= 1952; now += 16) state = spin.update(far, 1280, 800, now);
-  assert.ok(state.speed < 1.1);
+  assert.ok(state.speed < 1.15);
 });
 
 test('proximity is independent of hand order and camera distance', () => {
@@ -43,7 +43,7 @@ test('spin phase is continuous over long sessions and stable across frame rates'
   const afterGap = a.update(near, 1280, 800, 86400000);
   assert.equal(afterGap.time, first.time, 'a paused tab must not skip through hours of rotation');
   const next = a.update(far, 1280, 800, 86400016);
-  assert.ok(next.time - afterGap.time < .17);
+  assert.ok(next.time - afterGap.time < .65);
 });
 
 test('lost tracking freezes phase; reduced motion and reset return a stationary scene', () => {
